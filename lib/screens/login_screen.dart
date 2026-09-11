@@ -62,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   fontSize: 13,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'http://localhost:3000/api o http://192.168.1.108:3000/api',
+                  hintText: 'https://dev-api-control.iiap.gob.pe/api',
                   hintStyle: TextStyle(
                     fontSize: 12,
                     color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
@@ -100,9 +100,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         side: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      onPressed: () => ctrl.text = 'http://localhost:3000/api',
+                      onPressed: () => ctrl.text = 'https://dev-api-control.iiap.gob.pe/api',
                       child: Text(
-                        'localhost (USB)',
+                        'Por defecto',
                         style: TextStyle(
                           fontSize: 11,
                           color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF2D5E2A),
@@ -438,20 +438,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       icon: Icons.login_rounded,
                       isLoading: _isLoading,
                       onPressed: _handleLogin,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Botón rápido de prueba para Administrador
-                    Center(
-                      child: TextButton.icon(
-                        onPressed: _fillQuickAdmin,
-                        icon: const Icon(Icons.flash_on, size: 16, color: Color(0xFFD97706)),
-                        label: const Text(
-                          'Cargar cuenta Admin de prueba',
-                          style: TextStyle(fontSize: 12, color: Color(0xFFD97706)),
-                        ),
-                      ),
                     ),
 
                     const SizedBox(height: 12),

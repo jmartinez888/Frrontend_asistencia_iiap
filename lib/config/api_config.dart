@@ -5,8 +5,7 @@ class ApiConfig {
 
   // Obtiene la URL base adecuada según el entorno de ejecución
   static String get defaultBaseUrl {
-    // http://localhost:3000/api funciona en Windows, Web y en dispositivos Android conectados por USB con adb reverse
-    return 'http://127.0.0.1:3000/api';
+    return 'https://dev-api-control.iiap.gob.pe/api';
   }
 
   static const String localWifiUrl = 'http://192.168.1.108:3000/api';

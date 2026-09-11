@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../services/theme_service.dart';
 import '../services/auth_service.dart';
 import '../services/api_client.dart';
@@ -369,19 +369,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       icon: Icons.check_circle_outline,
                       isLoading: _isLoading,
                       onPressed: _handleRegister,
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    Center(
-                      child: TextButton.icon(
-                        onPressed: _fillAdminSample,
-                        icon: const Icon(Icons.auto_awesome, size: 16, color: Color(0xFFD97706)),
-                        label: const Text(
-                          'Autocompletar Administrador Institucional',
-                          style: TextStyle(fontSize: 12, color: Color(0xFFD97706)),
-                        ),
-                      ),
                     ),
 
                     const SizedBox(height: 12),
