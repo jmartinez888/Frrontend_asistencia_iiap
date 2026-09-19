@@ -637,6 +637,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
     }).toList();
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(
           isAdmin ? 'Gestión de Personal y Horarios' : 'Control de Horarios de Personal',

@@ -161,6 +161,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         final safeIndex = _currentIndex >= pages.length ? 0 : _currentIndex;
 
         return Scaffold(
+          backgroundColor: Colors.transparent,
           body: IndexedStack(
             index: safeIndex,
             children: pages,

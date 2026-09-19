@@ -161,7 +161,8 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
         // 1. Administrador General: NO tiene "Mis Asistencias", SOLO Registro Institucional
         if (isAdmin) {
           return Scaffold(
-            appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
               title: const Text('Registro Institucional', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               actions: [
                 IconButton(
@@ -188,7 +189,8 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
             });
           }
           return Scaffold(
-            appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
               title: const Text('Historial de Asistencias', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               actions: [
                 IconButton(
@@ -212,6 +214,7 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
           }
         }
         return Scaffold(
+          backgroundColor: Colors.transparent,
           appBar: AppBar(
             title: const Text('Control de Asistencias', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             actions: [

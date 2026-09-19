@@ -71,12 +71,15 @@ class MyApp extends StatelessWidget {
               indicatorColor: accent.lightContainer,
             ),
             appBarTheme: AppBarTheme(
-              backgroundColor: accent.lightCardBg,
+              backgroundColor: hasWallpaper
+                  ? Colors.transparent
+                  : accent.lightCardBg,
               foregroundColor: accent.lightPrimary,
-              elevation: 0.5,
-              systemOverlayStyle: const SystemUiOverlayStyle(
+              elevation: hasWallpaper ? 0 : 0.5,
+              systemOverlayStyle: SystemUiOverlayStyle(
                 statusBarColor: Colors.transparent,
-                statusBarIconBrightness: Brightness.light,
+                statusBarIconBrightness: hasWallpaper ? Brightness.light : Brightness.dark,
+                statusBarBrightness: hasWallpaper ? Brightness.dark : Brightness.light,
               ),
             ),
             useMaterial3: true,
@@ -103,12 +106,15 @@ class MyApp extends StatelessWidget {
               indicatorColor: accent.darkContainer,
             ),
             appBarTheme: AppBarTheme(
-              backgroundColor: accent.darkCardBg,
+              backgroundColor: hasWallpaper
+                  ? Colors.transparent
+                  : accent.darkCardBg,
               foregroundColor: Colors.white,
-              elevation: 0.5,
+              elevation: hasWallpaper ? 0 : 0.5,
               systemOverlayStyle: const SystemUiOverlayStyle(
                 statusBarColor: Colors.transparent,
                 statusBarIconBrightness: Brightness.light,
+                statusBarBrightness: Brightness.dark,
               ),
             ),
             useMaterial3: true,
