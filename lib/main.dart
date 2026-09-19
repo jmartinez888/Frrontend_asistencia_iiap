@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'config/api_config.dart';
 import 'services/theme_service.dart';
+import 'services/wallpaper_service.dart';
 import 'services/storage_service.dart';
 import 'services/schedule_service.dart';
 import 'screens/splash_gate_screen.dart';
@@ -8,6 +9,7 @@ import 'screens/splash_gate_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ThemeService.init();
+  await WallpaperService.init();
   await ApiConfig.init();
   await StorageService.init();
   await ScheduleService.init();
@@ -23,10 +25,12 @@ class MyApp extends StatelessWidget {
       animation: Listenable.merge([
         ThemeService.themeModeNotifier,
         ThemeService.accentColorNotifier,
+        WallpaperService.wallpaperNotifier,
       ]),
       builder: (context, _) {
         final currentMode = ThemeService.themeModeNotifier.value;
         final accent = ThemeService.currentAccent;
+        final hasWallpaper = WallpaperService.currentWallpaper.hasWallpaper;
 
         return MaterialApp(
           title: 'IIAP Asistencia',
@@ -36,7 +40,9 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             brightness: Brightness.light,
             primaryColor: accent.lightPrimary,
-            scaffoldBackgroundColor: accent.lightScaffoldBg,
+            scaffoldBackgroundColor: hasWallpaper
+                ? Colors.transparent
+                : accent.lightScaffoldBg,
             cardColor: accent.lightCardBg,
             dividerColor: accent.lightCardBorder,
             colorScheme: ColorScheme.fromSeed(
@@ -62,7 +68,9 @@ class MyApp extends StatelessWidget {
           darkTheme: ThemeData(
             brightness: Brightness.dark,
             primaryColor: accent.darkPrimary,
-            scaffoldBackgroundColor: accent.darkScaffoldBg,
+            scaffoldBackgroundColor: hasWallpaper
+                ? Colors.transparent
+                : accent.darkScaffoldBg,
             cardColor: accent.darkCardBg,
             dividerColor: accent.darkCardBorder,
             colorScheme: ColorScheme.dark(
@@ -85,6 +93,12 @@ class MyApp extends StatelessWidget {
             ),
             useMaterial3: true,
           ),
+          builder: (context, child) {
+            return WallpaperService.buildBackgroundContainer(
+              context: context,
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
           home: const SplashGateScreen(),
         );
       },

@@ -6,8 +6,10 @@ import '../../services/storage_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/users_service.dart';
 import '../../services/theme_service.dart';
+import '../../services/wallpaper_service.dart';
 import '../../services/api_client.dart';
 import '../../widgets/opera_gx_theme_picker.dart';
+import '../wallpaper_screen.dart';
 import '../login_screen.dart';
 
 class ProfileTab extends StatefulWidget {
@@ -21,10 +23,10 @@ class _ProfileTabState extends State<ProfileTab> {
   final ImagePicker _picker = ImagePicker();
   bool _isUploadingPhoto = false;
 
-  Future<void> _pickAndUploadPhoto() async {
+  Future<void> _pickAndUploadPhoto(ImageSource source) async {
     try {
       final XFile? file = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         maxWidth: 800,
         maxHeight: 800,
         imageQuality: 85,
@@ -42,23 +44,154 @@ class _ProfileTabState extends State<ProfileTab> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Foto de perfil actualizada correctamente.'),
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Text('Foto de perfil actualizada correctamente.'),
+            ],
+          ),
           backgroundColor: ThemeService.primaryColor(context),
+          behavior: SnackBarBehavior.floating,
         ),
       );
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), backgroundColor: const Color(0xFFEF4444)),
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al subir foto: $e'), backgroundColor: const Color(0xFFEF4444)),
+        SnackBar(
+          content: Text('Error al subir foto: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isUploadingPhoto = false);
     }
+  }
+
+  void _showPhotoOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF13111C) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(
+              color: ThemeService.cardBorder(ctx),
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'FOTO DE PERFIL',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.bold,
+                    color: ThemeService.primaryColor(ctx),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: ThemeService.containerColor(ctx),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.camera_alt_rounded,
+                      color: ThemeService.primaryColor(ctx),
+                      size: 22,
+                    ),
+                  ),
+                  title: Text(
+                    'Tomar Foto con la Cámara',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Usa la cámara de tu teléfono móvil',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickAndUploadPhoto(ImageSource.camera);
+                  },
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: ThemeService.containerColor(ctx),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.photo_library_rounded,
+                      color: ThemeService.primaryColor(ctx),
+                      size: 22,
+                    ),
+                  ),
+                  title: Text(
+                    'Elegir de la Galería',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Selecciona una imagen de tu galería',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickAndUploadPhoto(ImageSource.gallery);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _handleLogout() async {
@@ -66,29 +199,30 @@ class _ProfileTabState extends State<ProfileTab> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Cerrar Sesión'),
-        content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
+        content: const Text('¿Estás seguro de que deseas salir de tu cuenta?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
-            onPressed: () => Navigator.of(ctx).pop(true),
+            onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Salir', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
 
-    if (confirm == true) {
-      await AuthService.logout();
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
-    }
+    if (confirm != true) return;
+
+    await AuthService.logout();
+    if (!mounted) return;
+
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
   @override
@@ -104,18 +238,24 @@ class _ProfileTabState extends State<ProfileTab> {
         }
 
         return Scaffold(
-          appBar: AppBar(
-            title: const Text(
-              'Mi Perfil Institucional',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            centerTitle: true,
-          ),
           body: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Column(
               children: [
-                // Avatar e información principal
+                const SizedBox(height: 12),
+                Center(
+                  child: Text(
+                    'Mi Perfil Institucional',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Avatar con Botón de Cámara (Cámara / Galería)
                 Center(
                   child: Stack(
                     children: [
@@ -140,7 +280,7 @@ class _ProfileTabState extends State<ProfileTab> {
                         bottom: 0,
                         right: 0,
                         child: GestureDetector(
-                          onTap: _isUploadingPhoto ? null : _pickAndUploadPhoto,
+                          onTap: _isUploadingPhoto ? null : _showPhotoOptions,
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
@@ -165,30 +305,29 @@ class _ProfileTabState extends State<ProfileTab> {
                   ),
                 ),
 
-                const SizedBox(height: 14),
-
+                const SizedBox(height: 16),
                 Text(
                   user.fullName,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.white : const Color(0xFF0F172A),
                   ),
-                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   user.email,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
 
-                // Rol Badge con color dinámico del tema
+                // Badge de Rol
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
                     color: ThemeService.containerColor(context),
                     borderRadius: BorderRadius.circular(20),
@@ -235,6 +374,106 @@ class _ProfileTabState extends State<ProfileTab> {
                     ),
                   ),
                   child: const OperaGxThemePicker(),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Tarjeta Acceso a Fondo de Pantalla Personalizado (Estilo Opera GX)
+                ValueListenableBuilder<WallpaperItem>(
+                  valueListenable: WallpaperService.wallpaperNotifier,
+                  builder: (context, wallpaper, _) {
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const WallpaperScreen(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: ThemeService.cardBg(context),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: ThemeService.cardBorder(context),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: ThemeService.containerColor(context),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.wallpaper_rounded,
+                                color: ThemeService.primaryColor(context),
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'FONDO DE PANTALLA',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.2,
+                                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    wallpaper.hasWallpaper
+                                        ? 'Activo: ${wallpaper.title}'
+                                        : 'Color sólido predeterminado',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: ThemeService.primaryColor(context).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Cambiar',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: ThemeService.primaryColor(context),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 16,
+                                    color: ThemeService.primaryColor(context),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 24),
@@ -290,12 +529,12 @@ class _ProfileTabState extends State<ProfileTab> {
               color: isDark ? Colors.white : const Color(0xFF0F172A),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           ...items.map((it) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Row(
                   children: [
-                    Icon(it.icon, size: 18, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                    Icon(it.icon, size: 20, color: ThemeService.primaryColor(context)),
                     const SizedBox(width: 12),
                     Text(
                       it.label,
@@ -304,16 +543,13 @@ class _ProfileTabState extends State<ProfileTab> {
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        it.value,
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        ),
+                    const Spacer(),
+                    Text(
+                      it.value,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
                       ),
                     ),
                   ],
@@ -329,6 +565,5 @@ class _InfoRow {
   final IconData icon;
   final String label;
   final String value;
-
-  _InfoRow({required this.icon, required this.label, required this.value});
+  const _InfoRow({required this.icon, required this.label, required this.value});
 }
