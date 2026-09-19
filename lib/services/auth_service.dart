@@ -69,4 +69,32 @@ class AuthService {
   static Future<void> logout() async {
     await StorageService.clearSession();
   }
+
+  static Future<String> forgotPassword(String email) async {
+    final response = await ApiClient.post(
+      ApiConfig.authForgotPassword,
+      body: {
+        'email': email.trim().toLowerCase(),
+      },
+      requiresAuth: false,
+    );
+    return response['message']?.toString() ?? 'Código de recuperación enviado a tu correo.';
+  }
+
+  static Future<String> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    final response = await ApiClient.post(
+      ApiConfig.authResetPassword,
+      body: {
+        'email': email.trim().toLowerCase(),
+        'code': code.trim(),
+        'new_password': newPassword,
+      },
+      requiresAuth: false,
+    );
+    return response['message']?.toString() ?? 'Contraseña actualizada exitosamente.';
+  }
 }

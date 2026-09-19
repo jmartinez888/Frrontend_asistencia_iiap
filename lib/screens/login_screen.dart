@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../config/api_config.dart';
 import '../services/auth_service.dart';
 import '../services/theme_service.dart';
 import '../services/api_client.dart';
@@ -8,6 +7,7 @@ import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
 import 'register_screen.dart';
 import 'home_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,153 +23,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _obscurePassword = true;
   bool _isLoading = false;
-
-  void _showServerConfigDialog() {
-    final ctrl = TextEditingController(text: ApiConfig.baseUrl);
-
-    showDialog(
-      context: context,
-      builder: (dialogCtx) {
-        final isDark = Theme.of(dialogCtx).brightness == Brightness.dark;
-
-        return AlertDialog(
-          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          title: Text(
-            'Configuración del Servidor Backend',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'URL del servidor NestJS:',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: ctrl,
-                style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  fontSize: 13,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'https://dev-api-control.iiap.gob.pe/api',
-                  hintStyle: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                  ),
-                  filled: true,
-                  fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                    ),
-                  ),
-                  focusedBorder: const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(10)),
-                    borderSide: BorderSide(
-                      color: Color(0xFF2D5E2A),
-                      width: 1.8,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        side: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      onPressed: () => ctrl.text = 'https://dev-api-control.iiap.gob.pe/api',
-                      child: Text(
-                        'Por defecto',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF2D5E2A),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        side: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      onPressed: () => ctrl.text = ApiConfig.localWifiUrl,
-                      child: Text(
-                        'Wi-Fi Local',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF2D5E2A),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(),
-              child: Text(
-                'Cancelar',
-                style: TextStyle(
-                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                ),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2D5E2A),
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () async {
-                await ApiConfig.setCustomBaseUrl(ctrl.text);
-                if (dialogCtx.mounted) {
-                  Navigator.of(dialogCtx).pop();
-                  ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                    SnackBar(content: Text('Servidor configurado en: ${ApiConfig.baseUrl}')),
-                  );
-                }
-              },
-              child: const Text('Guardar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
@@ -198,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
-          backgroundColor: const Color(0xFF2D5E2A),
+          backgroundColor: ThemeService.primaryColor(context),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
@@ -242,10 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _fillQuickAdmin() {
-    _emailController.text = 'jhon.martinez@iiap.gob.pe';
-    _passwordController.text = '123456';
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -259,12 +109,12 @@ class _LoginScreenState extends State<LoginScreen> {
         titleSpacing: 16,
         title: Row(
           children: [
-            LeafLogo(size: 26, color: isDark ? const Color(0xFF81C784) : const Color(0xFF2D5E2A)),
+            LeafLogo(size: 26, color: ThemeService.primaryColor(context)),
             const SizedBox(width: 10),
             Text(
               'IIAP Asistencia',
               style: TextStyle(
-                color: isDark ? const Color(0xFF81C784) : const Color(0xFF1E4720),
+                color: ThemeService.primaryColor(context),
                 fontWeight: FontWeight.bold,
                 fontSize: 20,
               ),
@@ -272,14 +122,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              Icons.dns_outlined,
-              color: isDark ? const Color(0xFF81C784) : const Color(0xFF1E4720),
-            ),
-            tooltip: 'Configurar Servidor',
-            onPressed: _showServerConfigDialog,
-          ),
           ValueListenableBuilder<ThemeMode>(
             valueListenable: ThemeService.themeModeNotifier,
             builder: (context, mode, _) {
@@ -287,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
               return IconButton(
                 icon: Icon(
                   activeDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                  color: activeDark ? const Color(0xFFFFB74D) : const Color(0xFF1E4720),
+                  color: activeDark ? const Color(0xFFFFB74D) : ThemeService.primaryColor(context),
                 ),
                 tooltip: activeDark ? 'Modo Claro' : 'Modo Oscuro',
                 onPressed: () => ThemeService.toggleDarkMode(!activeDark),
@@ -312,10 +154,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     Container(
                       padding: const EdgeInsets.all(22),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                        color: ThemeService.cardBg(context),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                          color: ThemeService.cardBorder(context),
                         ),
                         boxShadow: [
                           BoxShadow(
@@ -333,14 +175,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: isDark
-                                      ? const Color(0xFF14532D).withValues(alpha: 0.4)
-                                      : const Color(0xFFDCFCE7),
+                                  color: ThemeService.containerColor(context),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(
                                   Icons.fingerprint_rounded,
-                                  color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF2D5E2A),
+                                  color: ThemeService.primaryColor(context),
                                   size: 26,
                                 ),
                               ),
@@ -408,7 +248,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     AppTextField(
                       controller: _passwordController,
                       label: 'Contraseña',
-                      hint: '••••••••••',
+                      hint: '⬢⬢⬢⬢⬢⬢⬢⬢⬢⬢',
                       prefixIcon: Icons.lock_outline_rounded,
                       obscureText: _obscurePassword,
                       suffixIcon: IconButton(
@@ -430,7 +270,29 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 10),
+
+                    // Enlace ¿Olvidaste tu contraseña?
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                          );
+                        },
+                        child: Text(
+                          '¿Olvidaste tu contraseña?',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: ThemeService.primaryColor(context),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
 
                     // Botón de Inicio de Sesión
                     AppButton(
@@ -464,7 +326,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF2D5E2A),
+                              color: ThemeService.primaryColor(context),
                             ),
                           ),
                         ),
@@ -480,3 +342,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

@@ -74,7 +74,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ],
           ),
-          backgroundColor: const Color(0xFF2D5E2A),
+          backgroundColor: ThemeService.primaryColor(context),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           duration: const Duration(seconds: 3),
@@ -120,14 +120,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  void _fillAdminSample() {
-    _nameController.text = 'Jhon Charlie Martinez Carranza';
-    _emailController.text = 'jhon.admin.${DateTime.now().millisecondsSinceEpoch}@iiap.gob.pe';
-    _documentController.text = '70123456';
-    _phoneController.text = '965123456';
-    _passwordController.text = '123456';
-    _confirmPasswordController.text = '123456';
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -141,12 +134,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         titleSpacing: 16,
         title: Row(
           children: [
-            LeafLogo(size: 26, color: isDark ? const Color(0xFF81C784) : const Color(0xFF2D5E2A)),
+            LeafLogo(size: 26, color: ThemeService.primaryColor(context)),
             const SizedBox(width: 10),
             Text(
               'IIAP Asistencia',
               style: TextStyle(
-                color: isDark ? const Color(0xFF81C784) : const Color(0xFF1E4720),
+                color: ThemeService.primaryColor(context),
                 fontWeight: FontWeight.bold,
                 fontSize: 20,
               ),
@@ -161,7 +154,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               return IconButton(
                 icon: Icon(
                   activeDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                  color: activeDark ? const Color(0xFFFFB74D) : const Color(0xFF1E4720),
+                  color: activeDark ? const Color(0xFFFFB74D) : ThemeService.primaryColor(context),
                 ),
                 tooltip: activeDark ? 'Modo Claro' : 'Modo Oscuro',
                 onPressed: () => ThemeService.toggleDarkMode(!activeDark),
@@ -186,10 +179,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Container(
                       padding: const EdgeInsets.all(22),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                        color: ThemeService.cardBg(context),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                          color: ThemeService.cardBorder(context),
                         ),
                         boxShadow: [
                           BoxShadow(
@@ -207,14 +200,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: isDark
-                                      ? const Color(0xFF14532D).withValues(alpha: 0.4)
-                                      : const Color(0xFFDCFCE7),
+                                  color: ThemeService.containerColor(context),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(
                                   Icons.person_add_alt_1_rounded,
-                                  color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF2D5E2A),
+                                  color: ThemeService.primaryColor(context),
                                   size: 26,
                                 ),
                               ),
@@ -390,7 +381,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF2D5E2A),
+                              color: ThemeService.primaryColor(context),
                             ),
                           ),
                         ),
@@ -406,3 +397,4 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
+

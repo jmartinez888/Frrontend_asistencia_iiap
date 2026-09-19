@@ -7,6 +7,7 @@ import 'tabs/dashboard_tab.dart';
 import 'tabs/attendance_tab.dart';
 import 'tabs/supervisors_tab.dart';
 import 'tabs/profile_tab.dart';
+import '../services/theme_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -118,8 +119,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return ValueListenableBuilder<UserModel?>(
       valueListenable: StorageService.currentUserNotifier,
@@ -169,10 +168,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           bottomNavigationBar: NavigationBar(
             selectedIndex: safeIndex,
             onDestinationSelected: (index) => setState(() => _currentIndex = index),
-            backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-            indicatorColor: isDark
-                ? const Color(0xFF14532D)
-                : const Color(0xFFDCFCE7),
+            backgroundColor: ThemeService.cardBg(context),
+            indicatorColor: ThemeService.containerColor(context),
             elevation: 2,
             destinations: destinations,
           ),
@@ -181,3 +178,4 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 }
+

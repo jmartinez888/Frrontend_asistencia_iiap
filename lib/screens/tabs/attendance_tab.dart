@@ -4,6 +4,7 @@ import '../../models/user_model.dart';
 import '../../services/storage_service.dart';
 import '../../services/attendance_service.dart';
 import '../../widgets/attendance_card.dart';
+import '../../services/theme_service.dart';
 
 class AttendanceTab extends StatefulWidget {
   const AttendanceTab({super.key});
@@ -224,8 +225,8 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
             ],
             bottom: TabBar(
               controller: _tabController,
-              labelColor: isDark ? const Color(0xFF4ADE80) : const Color(0xFF2D5E2A),
-              indicatorColor: isDark ? const Color(0xFF4ADE80) : const Color(0xFF2D5E2A),
+              labelColor: ThemeService.primaryColor(context),
+              indicatorColor: ThemeService.primaryColor(context),
               unselectedLabelColor: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
               indicatorWeight: 3,
               tabs: const [

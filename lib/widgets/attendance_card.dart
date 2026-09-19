@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/attendance_model.dart';
 import '../models/schedule_model.dart';
 import '../services/schedule_service.dart';
+import '../services/theme_service.dart';
 
 class AttendanceCard extends StatelessWidget {
   final AttendanceModel record;
@@ -39,10 +40,10 @@ class AttendanceCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        color: ThemeService.cardBg(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          color: ThemeService.cardBorder(context),
         ),
         boxShadow: [
           BoxShadow(
@@ -182,7 +183,7 @@ class AttendanceCard extends StatelessWidget {
                           color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                            color: ThemeService.cardBorder(context),
                           ),
                         ),
                         child: Row(
@@ -346,7 +347,7 @@ class AttendanceCard extends StatelessWidget {
       builder: (ctx) => Container(
         padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          color: ThemeService.cardBg(context),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(

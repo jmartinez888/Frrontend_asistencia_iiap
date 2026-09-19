@@ -7,6 +7,7 @@ import '../../services/schedule_service.dart';
 import '../../services/attendance_service.dart';
 import '../../services/api_client.dart';
 import '../qr/qr_display_screen.dart';
+import '../../services/theme_service.dart';
 
 class SupervisorsTab extends StatefulWidget {
   const SupervisorsTab({super.key});
@@ -136,7 +137,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(res['message']?.toString() ?? 'Supervisor revocado exitosamente.'),
-            backgroundColor: const Color(0xFF2D5E2A),
+            backgroundColor: ThemeService.primaryColor(context),
           ),
         );
         _loadData();
@@ -209,7 +210,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
           return Container(
             padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              color: ThemeService.cardBg(context),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: SingleChildScrollView(
@@ -356,7 +357,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                             decoration: BoxDecoration(
                               color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                              border: Border.all(color: ThemeService.cardBorder(context)),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,7 +393,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                             decoration: BoxDecoration(
                               color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                              border: Border.all(color: ThemeService.cardBorder(context)),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,7 +450,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                     min: 0,
                     max: 30,
                     divisions: 6,
-                    activeColor: const Color(0xFF2D5E2A),
+                    activeColor: ThemeService.primaryColor(context),
                     onChanged: (val) {
                       setSheetState(() => tolerance = val.toInt());
                     },
@@ -463,7 +464,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                     height: 48,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2D5E2A),
+                        backgroundColor: ThemeService.primaryColor(context),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
@@ -676,10 +677,10 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                         Container(
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                            color: ThemeService.cardBg(context),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                              color: ThemeService.cardBorder(context),
                             ),
                             boxShadow: [
                               BoxShadow(
@@ -776,9 +777,9 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                       // Barra de Búsqueda de Personal
                       Container(
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                          color: ThemeService.cardBg(context),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                          border: Border.all(color: ThemeService.cardBorder(context)),
                         ),
                         child: TextField(
                           onChanged: (val) => setState(() => _searchQuery = val.trim()),
@@ -843,10 +844,10 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 10),
                                 decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                  color: ThemeService.cardBg(context),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                                    color: ThemeService.cardBorder(context),
                                   ),
                                   boxShadow: [
                                     BoxShadow(
@@ -870,7 +871,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                                             children: [
                                               CircleAvatar(
                                                 radius: 19,
-                                                backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                                                backgroundColor: ThemeService.cardBorder(context),
                                                 child: Text(
                                                   u.fullName.isNotEmpty ? u.fullName[0].toUpperCase() : 'U',
                                                   style: TextStyle(

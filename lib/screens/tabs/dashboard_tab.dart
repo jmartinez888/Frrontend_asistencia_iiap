@@ -9,6 +9,7 @@ import '../../services/schedule_service.dart';
 import '../../widgets/attendance_card.dart';
 import '../qr/qr_display_screen.dart';
 import '../qr/qr_scanner_screen.dart';
+import '../../services/theme_service.dart';
 
 class DashboardTab extends StatefulWidget {
   final VoidCallback onNavigateToHistory;
@@ -96,8 +97,7 @@ class _DashboardTabState extends State<DashboardTab> {
             Center(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2D5E2A),
-                  foregroundColor: Colors.white,
+                  backgroundColor: ThemeService.primaryColor(context),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 onPressed: () => Navigator.of(ctx).pop(),
@@ -196,16 +196,14 @@ class _DashboardTabState extends State<DashboardTab> {
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: isDark
-                          ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-                          : [const Color(0xFF2D5E2A), const Color(0xFF1E4720)],
+                      colors: ThemeService.bannerGradient(context),
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: (isDark ? Colors.black : const Color(0xFF2D5E2A)).withValues(alpha: 0.25),
+                        color: ThemeService.primaryColor(context).withValues(alpha: isDark ? 0.2 : 0.25),
                         blurRadius: 14,
                         offset: const Offset(0, 5),
                       ),
@@ -414,10 +412,10 @@ class _DashboardTabState extends State<DashboardTab> {
                     Container(
                       padding: const EdgeInsets.all(22),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                        color: ThemeService.cardBg(context),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                          color: ThemeService.cardBorder(context),
                         ),
                       ),
                       child: Column(
@@ -450,10 +448,10 @@ class _DashboardTabState extends State<DashboardTab> {
                   Container(
                     padding: const EdgeInsets.all(22),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                      color: ThemeService.cardBg(context),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                        color: ThemeService.cardBorder(context),
                       ),
                     ),
                     child: Column(
@@ -511,10 +509,10 @@ class _DashboardTabState extends State<DashboardTab> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          color: ThemeService.cardBg(context),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+            color: ThemeService.cardBorder(context),
             width: 1.2,
           ),
           boxShadow: [

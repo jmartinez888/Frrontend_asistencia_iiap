@@ -6,8 +6,8 @@ import '../../services/storage_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/users_service.dart';
 import '../../services/theme_service.dart';
-import '../../config/api_config.dart';
 import '../../services/api_client.dart';
+import '../../widgets/opera_gx_theme_picker.dart';
 import '../login_screen.dart';
 
 class ProfileTab extends StatefulWidget {
@@ -41,9 +41,9 @@ class _ProfileTabState extends State<ProfileTab> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Foto de perfil actualizada correctamente.'),
-          backgroundColor: Color(0xFF2D5E2A),
+        SnackBar(
+          content: const Text('Foto de perfil actualizada correctamente.'),
+          backgroundColor: ThemeService.primaryColor(context),
         ),
       );
     } on ApiException catch (e) {
@@ -61,122 +61,12 @@ class _ProfileTabState extends State<ProfileTab> {
     }
   }
 
-  void _showServerConfigDialog() {
-    final ctrl = TextEditingController(text: ApiConfig.baseUrl);
-
-    showDialog(
-      context: context,
-      builder: (dialogCtx) {
-        final isDark = Theme.of(dialogCtx).brightness == Brightness.dark;
-
-        return AlertDialog(
-          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          title: Text(
-            'Configuración del Servidor Backend',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'URL del servidor NestJS:',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: ctrl,
-                style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  fontSize: 13,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'http://10.0.2.2:3000/api o http://localhost:3000/api',
-                  hintStyle: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                  ),
-                  filled: true,
-                  fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                    ),
-                  ),
-                  focusedBorder: const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(10)),
-                    borderSide: BorderSide(
-                      color: Color(0xFF2D5E2A),
-                      width: 1.8,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                '• Android Emulator: http://10.0.2.2:3000/api\n• Windows/Web: http://localhost:3000/api\n• Celular físico: http://<TU_IP_LOCAL>:3000/api',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(),
-              child: Text(
-                'Cancelar',
-                style: TextStyle(
-                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                ),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2D5E2A),
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () async {
-                await ApiConfig.setCustomBaseUrl(ctrl.text);
-                if (dialogCtx.mounted) {
-                  Navigator.of(dialogCtx).pop();
-                  ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                    SnackBar(content: Text('Servidor configurado en: ${ApiConfig.baseUrl}')),
-                  );
-                }
-              },
-              child: const Text('Guardar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _handleLogout() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Cerrar Sesión'),
-        content: const Text('¿Estás seguro de que deseas salir de tu cuenta?'),
+        content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -215,14 +105,11 @@ class _ProfileTabState extends State<ProfileTab> {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Mi Perfil Institucional', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.dns_outlined),
-                tooltip: 'Configurar Servidor',
-                onPressed: _showServerConfigDialog,
-              ),
-            ],
+            title: const Text(
+              'Mi Perfil Institucional',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            centerTitle: true,
           ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -234,7 +121,7 @@ class _ProfileTabState extends State<ProfileTab> {
                     children: [
                       CircleAvatar(
                         radius: 54,
-                        backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                        backgroundColor: isDark ? ThemeService.cardBorder(context) : const Color(0xFFE2E8F0),
                         backgroundImage: user.photoUrl != null && user.photoUrl!.isNotEmpty
                             ? NetworkImage(user.photoUrl!)
                             : null,
@@ -244,7 +131,7 @@ class _ProfileTabState extends State<ProfileTab> {
                                 style: TextStyle(
                                   fontSize: 40,
                                   fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : const Color(0xFF2D5E2A),
+                                  color: isDark ? Colors.white : ThemeService.primaryColor(context),
                                 ),
                               )
                             : null,
@@ -257,7 +144,7 @@ class _ProfileTabState extends State<ProfileTab> {
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF2D5E2A),
+                              color: ThemeService.primaryColor(context),
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: theme.scaffoldBackgroundColor,
@@ -282,7 +169,11 @@ class _ProfileTabState extends State<ProfileTab> {
 
                 Text(
                   user.fullName,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 4),
@@ -295,19 +186,23 @@ class _ProfileTabState extends State<ProfileTab> {
                 ),
                 const SizedBox(height: 10),
 
-                // Rol Badge
+                // Rol Badge con color dinámico del tema
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF14532D) : const Color(0xFFDCFCE7),
+                    color: ThemeService.containerColor(context),
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: ThemeService.primaryColor(context).withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   ),
                   child: Text(
                     user.role.displayName,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A),
+                      color: ThemeService.primaryColor(context),
                     ),
                   ),
                 ),
@@ -328,70 +223,18 @@ class _ProfileTabState extends State<ProfileTab> {
 
                 const SizedBox(height: 16),
 
-                // Tarjeta de Configuración
+                // Tarjeta de Personalización Estilo Opera GX
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    color: ThemeService.cardBg(context),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                      color: ThemeService.cardBorder(context),
+                      width: 1.2,
                     ),
                   ),
-                  child: Column(
-                    children: [
-                      // Modo Oscuro Switch
-                      ValueListenableBuilder<ThemeMode>(
-                        valueListenable: ThemeService.themeModeNotifier,
-                        builder: (context, mode, _) {
-                          final activeDark = mode == ThemeMode.dark;
-                          return SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            secondary: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: (activeDark ? const Color(0xFFFFB74D) : const Color(0xFF2D5E2A)).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                activeDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                                color: activeDark ? const Color(0xFFFFB74D) : const Color(0xFF2D5E2A),
-                              ),
-                            ),
-                            title: const Text('Modo Oscuro', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                            subtitle: Text(
-                              activeDark ? 'Tema oscuro activo' : 'Tema claro activo',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            value: activeDark,
-                            onChanged: (val) => ThemeService.toggleDarkMode(val),
-                          );
-                        },
-                      ),
-                      const Divider(height: 20),
-                      // Conexión del Servidor
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2563EB).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.link_rounded, color: Color(0xFF2563EB)),
-                        ),
-                        title: const Text('Servidor Backend', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                        subtitle: Text(
-                          ApiConfig.baseUrl,
-                          style: const TextStyle(fontSize: 12),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: const Icon(Icons.edit_outlined, size: 20),
-                        onTap: _showServerConfigDialog,
-                      ),
-                    ],
-                  ),
+                  child: const OperaGxThemePicker(),
                 ),
 
                 const SizedBox(height: 24),
@@ -429,16 +272,24 @@ class _ProfileTabState extends State<ProfileTab> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: ThemeService.cardBg(context),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          color: ThemeService.cardBorder(context),
+          width: 1.2,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
+          ),
           const SizedBox(height: 14),
           ...items.map((it) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -458,7 +309,11 @@ class _ProfileTabState extends State<ProfileTab> {
                       child: Text(
                         it.value,
                         textAlign: TextAlign.right,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
                       ),
                     ),
                   ],

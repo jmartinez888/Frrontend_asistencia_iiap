@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/theme_service.dart';
 
 class AppTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -31,9 +32,9 @@ class AppTextField extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final fillColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    final focusColor = isDark ? const Color(0xFF4ADE80) : const Color(0xFF2D5E2A);
+    final fillColor = isDark ? ThemeService.cardBg(context) : Colors.white;
+    final borderColor = isDark ? ThemeService.cardBorder(context) : const Color(0xFFCBD5E1);
+    final focusColor = ThemeService.primaryColor(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
