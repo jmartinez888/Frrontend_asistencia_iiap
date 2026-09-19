@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum WallpaperType { none, preset, custom }
@@ -7,6 +8,7 @@ enum WallpaperType { none, preset, custom }
 class WallpaperItem {
   final String id;
   final String title;
+  final String category; // 'General', 'Chicas', 'Chicos', etc.
   final WallpaperType type;
   final String? assetPath;
   final String? customFilePath;
@@ -14,6 +16,7 @@ class WallpaperItem {
   const WallpaperItem({
     required this.id,
     required this.title,
+    this.category = 'General',
     required this.type,
     this.assetPath,
     this.customFilePath,
@@ -35,32 +38,73 @@ class WallpaperItem {
 }
 
 class WallpaperService {
-  static const String _keyWallpaperId = 'active_wallpaper_id_v1';
-  static const String _keyWallpaperType = 'active_wallpaper_type_v1';
-  static const String _keyCustomPath = 'active_wallpaper_custom_path_v1';
+  static const String _keyWallpaperId = 'active_wallpaper_id_v2';
+  static const String _keyWallpaperType = 'active_wallpaper_type_v2';
+  static const String _keyCustomPath = 'active_wallpaper_custom_path_v2';
 
   static const WallpaperItem defaultNone = WallpaperItem(
     id: 'none',
     title: 'Color Sólido',
+    category: 'General',
     type: WallpaperType.none,
   );
 
   static const List<WallpaperItem> presets = [
+    // Para Chicas & Estilo Cute / Anime
+    WallpaperItem(
+      id: 'pucca',
+      title: 'PUCCA CHIC',
+      category: 'Chicas',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_pucca.jpg',
+    ),
+    WallpaperItem(
+      id: 'angela',
+      title: 'GATITA ANGELA',
+      category: 'Chicas',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_angela.jpg',
+    ),
+    WallpaperItem(
+      id: 'anime_girl',
+      title: 'ANIME CHICA',
+      category: 'Chicas',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_anime_girl.jpg',
+    ),
+    WallpaperItem(
+      id: 'sakura',
+      title: 'SAKURA ROSA',
+      category: 'Chicas',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_sakura.jpg',
+    ),
+    // Para Chicos & Cyber / Institucional
     WallpaperItem(
       id: 'gx',
-      title: 'GX',
+      title: 'GX NEO',
+      category: 'Chicos & Gaming',
       type: WallpaperType.preset,
       assetPath: 'assets/images/wallpapers/wallpaper_gx.jpg',
     ),
     WallpaperItem(
       id: 'ronin',
-      title: 'RONIN',
+      title: 'RONIN CYBER',
+      category: 'Chicos & Gaming',
       type: WallpaperType.preset,
       assetPath: 'assets/images/wallpapers/wallpaper_ronin.jpg',
     ),
     WallpaperItem(
+      id: 'anime_boy',
+      title: 'ANIME HERO',
+      category: 'Chicos & Gaming',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_anime_boy.jpg',
+    ),
+    WallpaperItem(
       id: 'selva',
       title: 'SELVA IIAP',
+      category: 'Institucional',
       type: WallpaperType.preset,
       assetPath: 'assets/images/wallpapers/wallpaper_selva.jpg',
     ),
@@ -130,45 +174,69 @@ class WallpaperService {
   }
 
   /// Construye un contenedor con el fondo activo protegido por overlay oscuro
-  /// para garantizar que ningún texto, tarjeta o botón pierda legibilidad.
+  /// para garantizar que ningún texto, tarjeta o botón pierda legibilidad,
+  /// asegurando que la barra de estado superior (batería, hora, red) nunca se oculte.
   static Widget buildBackgroundContainer({
     required BuildContext context,
     required Widget child,
-    bool isScaffold = false,
   }) {
     final wallpaper = wallpaperNotifier.value;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Asegurar que la barra superior (Status Bar) del teléfono siempre se muestre con máxima nitidez
+    final overlayStyle = SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isDark || wallpaper.hasWallpaper
+          ? Brightness.light // Iconos blancos brillantes
+          : Brightness.dark, // Iconos oscuros sobre fondo claro
+      statusBarBrightness: isDark || wallpaper.hasWallpaper
+          ? Brightness.dark
+          : Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: isDark || wallpaper.hasWallpaper
+          ? Brightness.light
+          : Brightness.dark,
+    );
+
     if (!wallpaper.hasWallpaper) {
-      return child;
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: overlayStyle,
+        child: child,
+      );
     }
 
     final provider = wallpaper.imageProvider;
     if (provider == null) {
-      return child;
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: overlayStyle,
+        child: child,
+      );
     }
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Capa 1: Imagen de Fondo
-        Positioned.fill(
-          child: Image(
-            image: provider,
-            fit: BoxFit.cover,
-          ),
-        ),
-        // Capa 2: Velo Protector de Legibilidad (Overlay con tinte ambiental)
-        Positioned.fill(
-          child: Container(
-            color: Colors.black.withValues(
-              alpha: isDark ? 0.72 : 0.55,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyle,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Capa 1: Imagen de Fondo
+          Positioned.fill(
+            child: Image(
+              image: provider,
+              fit: BoxFit.cover,
             ),
           ),
-        ),
-        // Capa 3: Contenido de la pantalla
-        Positioned.fill(child: child),
-      ],
+          // Capa 2: Velo Protector de Legibilidad (Overlay con tinte ambiental)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withValues(
+                alpha: isDark ? 0.72 : 0.55,
+              ),
+            ),
+          ),
+          // Capa 3: Contenido de la pantalla
+          Positioned.fill(child: child),
+        ],
+      ),
     );
   }
 }

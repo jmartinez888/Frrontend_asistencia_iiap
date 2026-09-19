@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'config/api_config.dart';
 import 'services/theme_service.dart';
 import 'services/wallpaper_service.dart';
@@ -8,6 +9,17 @@ import 'screens/splash_gate_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Asegurar que la barra superior del celular (batería, hora, internet) NUNCA se oculte en toda la app
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+    ),
+  );
+
   await ThemeService.init();
   await WallpaperService.init();
   await ApiConfig.init();
@@ -62,6 +74,10 @@ class MyApp extends StatelessWidget {
               backgroundColor: accent.lightCardBg,
               foregroundColor: accent.lightPrimary,
               elevation: 0.5,
+              systemOverlayStyle: const SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.light,
+              ),
             ),
             useMaterial3: true,
           ),
@@ -90,6 +106,10 @@ class MyApp extends StatelessWidget {
               backgroundColor: accent.darkCardBg,
               foregroundColor: Colors.white,
               elevation: 0.5,
+              systemOverlayStyle: const SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.light,
+              ),
             ),
             useMaterial3: true,
           ),

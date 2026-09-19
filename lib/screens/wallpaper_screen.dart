@@ -177,23 +177,77 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primary = ThemeService.primaryColor(context);
 
+    // Separar presets por categoría
+    final chicasPresets = WallpaperService.presets
+        .where((p) => p.category == 'Chicas')
+        .toList();
+
+    final chicosPresets = WallpaperService.presets
+        .where((p) => p.category == 'Chicos & Gaming' || p.category == 'Institucional')
+        .toList();
+
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          color: isDark ? Colors.white : const Color(0xFF0F172A),
-          onPressed: () => Navigator.pop(context),
+        backgroundColor: isDark
+            ? const Color(0xFF0F1422).withValues(alpha: 0.95)
+            : Colors.white.withValues(alpha: 0.95),
+        elevation: 1,
+        shadowColor: Colors.black.withValues(alpha: 0.2),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Center(
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: primary.withValues(alpha: 0.45),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 16,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+                padding: EdgeInsets.zero,
+                tooltip: 'Regresar',
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ),
         ),
-        title: Text(
-          'FONDO DE PANTALLA',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 2.0,
-            color: isDark ? Colors.white : const Color(0xFF0F172A),
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xFF020617).withValues(alpha: 0.85)
+                : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: primary.withValues(alpha: 0.4),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'FONDO DE PANTALLA',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2.0,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
           ),
         ),
         centerTitle: true,
@@ -202,29 +256,46 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
         valueListenable: WallpaperService.wallpaperNotifier,
         builder: (context, activeWallpaper, _) {
           return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // SECCIÓN: DESTACADO
-                Text(
-                  'DESTACADO',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.8,
-                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                  ),
+                // SECCIÓN: CHICAS & ANIME CUTE (Pucca, Angela, Anime Chica, Sakura)
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF2A85).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Color(0xFFFF2A85),
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'COLECCIÓN CHICAS & ANIME',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                        color: isDark ? const Color(0xFFF472B6) : const Color(0xFFDB2777),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 SizedBox(
-                  height: 330,
+                  height: 310,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    itemCount: WallpaperService.presets.length,
+                    itemCount: chicasPresets.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 14),
                     itemBuilder: (context, index) {
-                      final item = WallpaperService.presets[index];
+                      final item = chicasPresets[index];
                       final isSelected = activeWallpaper.id == item.id;
 
                       return _buildPresetCard(
@@ -237,67 +308,135 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
 
-                // SECCIÓN: PERSONALIZAR
+                // SECCIÓN: CHICOS & GAMING (GX Neo, Ronin, Anime Hero, Selva IIAP)
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.bolt_rounded,
+                        color: primary,
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'COLECCIÓN CHICOS & GAMING',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 310,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: chicosPresets.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 14),
+                    itemBuilder: (context, index) {
+                      final item = chicosPresets[index];
+                      final isSelected = activeWallpaper.id == item.id;
+
+                      return _buildPresetCard(
+                        item: item,
+                        isSelected: isSelected,
+                        primary: primary,
+                        onTap: () => WallpaperService.setPreset(item),
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // SECCIÓN: PERSONALIZAR (Con Expanded para eliminar cualquier desbordamiento de píxeles)
                 Text(
-                  'PERSONALIZAR',
+                  'PERSONALIZAR & SIN FONDO',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 1.8,
+                    letterSpacing: 1.5,
                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
 
+                // Row con Expanded: CERO desbordamientos en cualquier ancho de pantalla
                 Row(
                   children: [
                     // Tarjeta "+ Añade tu fondo de pantalla"
-                    _buildAddCustomCard(
-                      isSelected: activeWallpaper.type == WallpaperType.custom,
-                      activeWallpaper: activeWallpaper,
-                      primary: primary,
-                      isDark: isDark,
-                      onTap: _showImageSourceModal,
+                    Expanded(
+                      child: _buildAddCustomCard(
+                        isSelected: activeWallpaper.type == WallpaperType.custom,
+                        activeWallpaper: activeWallpaper,
+                        primary: primary,
+                        isDark: isDark,
+                        onTap: _showImageSourceModal,
+                      ),
                     ),
 
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 14),
 
                     // Tarjeta "Color Sólido / Sin Fondo"
-                    _buildDefaultCard(
-                      isSelected: !activeWallpaper.hasWallpaper,
-                      primary: primary,
-                      isDark: isDark,
-                      onTap: () => WallpaperService.clearWallpaper(),
+                    Expanded(
+                      child: _buildDefaultCard(
+                        isSelected: !activeWallpaper.hasWallpaper,
+                        primary: primary,
+                        isDark: isDark,
+                        onTap: () => WallpaperService.clearWallpaper(),
+                      ),
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 36),
+                const SizedBox(height: 28),
 
                 // Mensaje informativo
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: ThemeService.cardBg(context),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: ThemeService.cardBorder(context),
-                      width: 1,
+                      width: 1.2,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.visibility_rounded,
-                        color: primary,
-                        size: 24,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: primary.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.verified_user_rounded,
+                          color: primary,
+                          size: 20,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Text(
-                          'El fondo se aplica con un velo ambiental inteligente que protege los textos, manteniendo siempre legibilidad y alto contraste en todas las pantallas.',
+                          'El fondo se proyecta con un velo ambiental inteligente que protege los textos, manteniendo siempre visible la barra de estado superior (hora, batería e internet) y legibilidad al 100%.',
                           style: TextStyle(
                             fontSize: 12,
                             height: 1.4,
@@ -309,7 +448,7 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 36),
               ],
             ),
           );
@@ -327,7 +466,7 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-        width: 155,
+        width: 145,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -338,17 +477,23 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isSelected ? primary : Colors.transparent,
-                    width: isSelected ? 3 : 0,
+                    width: isSelected ? 3.5 : 0,
                   ),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: primary.withValues(alpha: 0.4),
-                            blurRadius: 14,
+                            color: primary.withValues(alpha: 0.5),
+                            blurRadius: 16,
                             spreadRadius: 1,
                           )
                         ]
-                      : [],
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          )
+                        ],
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(13),
@@ -368,6 +513,12 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                             decoration: BoxDecoration(
                               color: primary,
                               shape: BoxShape.circle,
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black45,
+                                  blurRadius: 4,
+                                ),
+                              ],
                             ),
                             child: const Icon(
                               Icons.check,
@@ -384,10 +535,13 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
             const SizedBox(height: 10),
             Text(
               item.title,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                letterSpacing: 1.2,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                letterSpacing: 1.1,
                 color: isSelected ? primary : Colors.grey,
               ),
             ),
@@ -409,8 +563,7 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-        width: 155,
-        height: 250,
+        height: 230,
         child: Column(
           children: [
             Expanded(
@@ -426,8 +579,8 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: primary.withValues(alpha: 0.35),
-                            blurRadius: 12,
+                            color: primary.withValues(alpha: 0.4),
+                            blurRadius: 14,
                           )
                         ]
                       : [],
@@ -461,23 +614,30 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                           ],
                         )
                       : Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(12),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               _isPicking
                                   ? SizedBox(
-                                      width: 32,
-                                      height: 32,
+                                      width: 30,
+                                      height: 30,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2.5,
                                         valueColor: AlwaysStoppedAnimation(primary),
                                       ),
                                     )
-                                  : Icon(
-                                      Icons.add_rounded,
-                                      size: 38,
-                                      color: primary,
+                                  : Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: primary.withValues(alpha: 0.15),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.add_photo_alternate_rounded,
+                                        size: 28,
+                                        color: primary,
+                                      ),
                                     ),
                               const SizedBox(height: 12),
                               Text(
@@ -495,12 +655,12 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               hasCustomImage ? 'MI FOTO' : 'PERSONALIZAR',
               style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                 letterSpacing: 1.0,
                 color: isSelected ? primary : Colors.grey,
               ),
@@ -520,8 +680,7 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-        width: 155,
-        height: 250,
+        height: 230,
         child: Column(
           children: [
             Expanded(
@@ -537,8 +696,8 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: primary.withValues(alpha: 0.35),
-                            blurRadius: 12,
+                            color: primary.withValues(alpha: 0.4),
+                            blurRadius: 14,
                           )
                         ]
                       : [],
@@ -547,12 +706,19 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.format_paint_rounded,
-                        size: 32,
-                        color: isSelected ? primary : Colors.grey,
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: (isSelected ? primary : Colors.grey).withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.format_paint_rounded,
+                          size: 26,
+                          color: isSelected ? primary : Colors.grey,
+                        ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       Text(
                         'Color Sólido\n(Por defecto)',
                         textAlign: TextAlign.center,
@@ -567,12 +733,12 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               'SIN FONDO',
               style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                 letterSpacing: 1.0,
                 color: isSelected ? primary : Colors.grey,
               ),
