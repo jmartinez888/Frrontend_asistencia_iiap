@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum AppAccentColor {
@@ -198,7 +198,9 @@ class ThemeService {
 
   static SharedPreferences? _prefs;
 
-  static bool get isDarkMode => themeModeNotifier.value == ThemeMode.dark;
+  static bool get isDarkMode =>
+      themeModeNotifier.value == ThemeMode.dark ||
+      themeModeNotifier.value == ThemeMode.system;
   static AppAccentColor get currentAccent => accentColorNotifier.value;
 
   static Future<void> init() async {

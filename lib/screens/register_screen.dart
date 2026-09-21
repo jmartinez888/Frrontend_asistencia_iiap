@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../services/theme_service.dart';
 import '../services/auth_service.dart';
 import '../services/api_client.dart';
@@ -150,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ValueListenableBuilder<ThemeMode>(
             valueListenable: ThemeService.themeModeNotifier,
             builder: (context, mode, _) {
-              final activeDark = mode == ThemeMode.dark;
+              final activeDark = mode == ThemeMode.dark || mode == ThemeMode.system;
               return IconButton(
                 icon: Icon(
                   activeDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
@@ -254,7 +254,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     AppTextField(
                       controller: _nameController,
                       label: 'Nombre Completo',
-                      hint: 'Ej. Jhon Charlie Martinez Carranza',
+                      hint: 'Escribe tu nombre completo',
                       prefixIcon: Icons.person_outline_rounded,
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'El nombre es obligatorio';
@@ -268,7 +268,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     AppTextField(
                       controller: _emailController,
                       label: 'Correo Electrónico',
-                      hint: 'ejemplo@iiap.gob.pe',
+                      hint: 'Escribe tu correo electrónico',
                       prefixIcon: Icons.email_outlined,
                       keyboardType: TextInputType.emailAddress,
                       validator: (v) {
@@ -356,7 +356,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 24),
 
                     AppButton(
-                      text: 'Registrar en Base de Datos',
+                      text: 'Registrarse',
                       icon: Icons.check_circle_outline,
                       isLoading: _isLoading,
                       onPressed: _handleRegister,

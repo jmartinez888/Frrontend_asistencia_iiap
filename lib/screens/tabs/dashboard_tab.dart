@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../models/attendance_model.dart';
 import '../../models/schedule_model.dart';
@@ -10,6 +10,7 @@ import '../../widgets/attendance_card.dart';
 import '../qr/qr_display_screen.dart';
 import '../qr/qr_scanner_screen.dart';
 import '../../services/theme_service.dart';
+import '../../services/connectivity_service.dart';
 
 class DashboardTab extends StatefulWidget {
   final VoidCallback onNavigateToHistory;
@@ -251,23 +252,45 @@ class _DashboardTabState extends State<DashboardTab> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.circle, color: Color(0xFF4ADE80), size: 7),
-                                SizedBox(width: 4),
-                                Text(
-                                  'En línea',
-                                  style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w600),
+                          ValueListenableBuilder<bool>(
+                            valueListenable: ConnectivityService.isOnlineNotifier,
+                            builder: (context, isOnline, _) {
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isOnline
+                                      ? Colors.white.withValues(alpha: 0.15)
+                                      : const Color(0xFFEF4444).withValues(alpha: 0.25),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isOnline
+                                        ? Colors.white.withValues(alpha: 0.2)
+                                        : const Color(0xFFEF4444).withValues(alpha: 0.5),
+                                    width: 1,
+                                  ),
                                 ),
-                              ],
-                            ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.circle,
+                                      color: isOnline ? const Color(0xFF4ADE80) : const Color(0xFFF87171),
+                                      size: 7,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      isOnline ? 'En línea' : 'Desconectado',
+                                      style: TextStyle(
+                                        color: isOnline ? Colors.white : const Color(0xFFFEE2E2),
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),

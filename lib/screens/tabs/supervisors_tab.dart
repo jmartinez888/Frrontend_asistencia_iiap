@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../models/schedule_model.dart';
 import '../../services/users_service.dart';
@@ -637,7 +637,6 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(
           isAdmin ? 'Gestión de Personal y Horarios' : 'Control de Horarios de Personal',

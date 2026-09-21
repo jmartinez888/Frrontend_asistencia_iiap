@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/theme_service.dart';
 import '../services/api_client.dart';
@@ -125,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ValueListenableBuilder<ThemeMode>(
             valueListenable: ThemeService.themeModeNotifier,
             builder: (context, mode, _) {
-              final activeDark = mode == ThemeMode.dark;
+              final activeDark = mode == ThemeMode.dark || mode == ThemeMode.system;
               return IconButton(
                 icon: Icon(
                   activeDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,

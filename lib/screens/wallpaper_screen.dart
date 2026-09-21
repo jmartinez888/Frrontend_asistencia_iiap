@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/theme_service.dart';
 import '../services/wallpaper_service.dart';
@@ -187,7 +187,6 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
         .toList();
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: isDark
             ? const Color(0xFF0F1422).withValues(alpha: 0.95)
@@ -394,7 +393,26 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                         isSelected: !activeWallpaper.hasWallpaper,
                         primary: primary,
                         isDark: isDark,
-                        onTap: () => WallpaperService.clearWallpaper(),
+                        onTap: () async {
+                          await WallpaperService.clearWallpaper();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Row(
+                                  children: [
+                                    Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                    SizedBox(width: 10),
+                                    Text('Restablecido correctamente.'),
+                                  ],
+                                ),
+                                backgroundColor: const Color(0xFF2D5E2A),
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
                       ),
                     ),
                   ],

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../models/attendance_model.dart';
 import '../../models/user_model.dart';
 import '../../services/storage_service.dart';
@@ -161,7 +161,6 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
         // 1. Administrador General: NO tiene "Mis Asistencias", SOLO Registro Institucional
         if (isAdmin) {
           return Scaffold(
-          backgroundColor: Colors.transparent,
           appBar: AppBar(
               title: const Text('Registro Institucional', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               actions: [
@@ -189,7 +188,6 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
             });
           }
           return Scaffold(
-          backgroundColor: Colors.transparent,
           appBar: AppBar(
               title: const Text('Historial de Asistencias', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               actions: [
@@ -214,7 +212,6 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
           }
         }
         return Scaffold(
-          backgroundColor: Colors.transparent,
           appBar: AppBar(
             title: const Text('Control de Asistencias', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             actions: [

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/storage_service.dart';
@@ -161,7 +161,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         final safeIndex = _currentIndex >= pages.length ? 0 : _currentIndex;
 
         return Scaffold(
-          backgroundColor: Colors.transparent,
           body: IndexedStack(
             index: safeIndex,
             children: pages,

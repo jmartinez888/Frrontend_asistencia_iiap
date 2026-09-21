@@ -1,5 +1,6 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
+import 'theme_service.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -171,6 +172,7 @@ class WallpaperService {
     await _prefs?.setString(_keyWallpaperId, 'none');
     await _prefs?.setString(_keyWallpaperType, 'none');
     await _prefs?.remove(_keyCustomPath);
+    ThemeService.setAccentColor(AppAccentColor.verdeSelva);
   }
 
   /// Construye un contenedor con el fondo activo protegido por overlay oscuro
@@ -198,10 +200,17 @@ class WallpaperService {
           : Brightness.dark,
     );
 
+    final defaultBgColor = isDark
+        ? ThemeService.currentAccent.darkScaffoldBg
+        : ThemeService.currentAccent.lightScaffoldBg;
+
     if (!wallpaper.hasWallpaper) {
       return AnnotatedRegion<SystemUiOverlayStyle>(
         value: overlayStyle,
-        child: child,
+        child: ColoredBox(
+          color: defaultBgColor,
+          child: child,
+        ),
       );
     }
 
@@ -209,7 +218,10 @@ class WallpaperService {
     if (provider == null) {
       return AnnotatedRegion<SystemUiOverlayStyle>(
         value: overlayStyle,
-        child: child,
+        child: ColoredBox(
+          color: defaultBgColor,
+          child: child,
+        ),
       );
     }
 

@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'config/api_config.dart';
 import 'services/theme_service.dart';
 import 'services/wallpaper_service.dart';
 import 'services/storage_service.dart';
 import 'services/schedule_service.dart';
+import 'services/connectivity_service.dart';
 import 'screens/splash_gate_screen.dart';
 
 void main() async {
@@ -25,6 +26,7 @@ void main() async {
   await ApiConfig.init();
   await StorageService.init();
   await ScheduleService.init();
+  await ConnectivityService.init();
   runApp(const MyApp());
 }
 
@@ -43,12 +45,14 @@ class MyApp extends StatelessWidget {
         final currentMode = ThemeService.themeModeNotifier.value;
         final accent = ThemeService.currentAccent;
         final hasWallpaper = WallpaperService.currentWallpaper.hasWallpaper;
+        final effectiveThemeMode =
+            currentMode == ThemeMode.system ? ThemeMode.dark : currentMode;
 
         return MaterialApp(
           title: 'IIAP Asistencia',
           debugShowCheckedModeBanner: false,
           themeAnimationDuration: Duration.zero,
-          themeMode: currentMode,
+          themeMode: effectiveThemeMode,
           theme: ThemeData(
             brightness: Brightness.light,
             primaryColor: accent.lightPrimary,
