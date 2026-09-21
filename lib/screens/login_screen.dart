@@ -296,7 +296,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     // Botón de Inicio de Sesión
                     AppButton(
-                      text: 'Entrar al Sistema',
+                      text: 'Entrar',
                       icon: Icons.login_rounded,
                       isLoading: _isLoading,
                       onPressed: _handleLogin,
