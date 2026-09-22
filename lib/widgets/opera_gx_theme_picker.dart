@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../services/theme_service.dart';
 
 class OperaGxThemePicker extends StatelessWidget {
@@ -15,7 +15,6 @@ class OperaGxThemePicker extends StatelessWidget {
         ThemeService.accentColorNotifier,
       ]),
       builder: (context, _) {
-        final currentMode = ThemeService.themeModeNotifier.value;
         final currentAccent = ThemeService.currentAccent;
         final activeColor = currentAccent.accentSample;
 
@@ -209,93 +208,9 @@ class OperaGxThemePicker extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 18),
-
-            // Selector Segmentado estilo Opera GX: [ Claro | Auto | Oscuro ]
-            Container(
-              height: 46,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF0F0F1A) : const Color(0xFFE2E8F0),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isDark ? const Color(0xFF262638) : const Color(0xFFCBD5E1),
-                ),
-              ),
-              child: Row(
-                children: [
-                  _buildSegmentButton(
-                    label: 'Claro',
-                    isSelected: currentMode == ThemeMode.light,
-                    activeColor: activeColor,
-                    isDark: isDark,
-                    onTap: () => ThemeService.setThemeMode(ThemeMode.light),
-                  ),
-                  _buildSegmentButton(
-                    label: 'Auto',
-                    isSelected: currentMode == ThemeMode.system,
-                    activeColor: activeColor,
-                    isDark: isDark,
-                    onTap: () {
-                    ThemeService.setThemeMode(ThemeMode.system);
-                    ThemeService.setAccentColor(AppAccentColor.verdeSelva);
-                  },
-                  ),
-                  _buildSegmentButton(
-                    label: 'Oscuro',
-                    isSelected: currentMode == ThemeMode.dark,
-                    activeColor: activeColor,
-                    isDark: isDark,
-                    onTap: () => ThemeService.setThemeMode(ThemeMode.dark),
-                  ),
-                ],
-              ),
-            ),
           ],
         );
       },
-    );
-  }
-
-  Widget _buildSegmentButton({
-    required String label,
-    required bool isSelected,
-    required Color activeColor,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: isSelected ? activeColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: activeColor.withValues(alpha: 0.4),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                color: isSelected
-                    ? Colors.white
-                    : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

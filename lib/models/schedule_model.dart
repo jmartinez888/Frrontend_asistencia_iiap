@@ -88,7 +88,7 @@ class ScheduleModel {
   final int checkInMinute; // 0-59
   final int checkOutHour; // 0-23
   final int checkOutMinute; // 0-59
-  final int toleranceMinutes; // Por defecto 10 min
+  final int toleranceMinutes; // Por defecto 30 min (mañana y tarde)
   final String? customNotes;
   final DateTime? updatedAt;
   final String? updatedByName;
@@ -100,7 +100,7 @@ class ScheduleModel {
     required this.checkInMinute,
     required this.checkOutHour,
     required this.checkOutMinute,
-    this.toleranceMinutes = 10,
+    this.toleranceMinutes = 30,
     this.customNotes,
     this.updatedAt,
     this.updatedByName,
@@ -121,7 +121,7 @@ class ScheduleModel {
           checkInMinute: 0,
           checkOutHour: 13,
           checkOutMinute: 0,
-          toleranceMinutes: 10,
+          toleranceMinutes: 30,
           updatedAt: DateTime.now(),
           updatedByName: updatedByName,
         );
@@ -134,7 +134,7 @@ class ScheduleModel {
           checkInMinute: 0,
           checkOutHour: 17,
           checkOutMinute: 0,
-          toleranceMinutes: 10,
+          toleranceMinutes: 30,
           updatedAt: DateTime.now(),
           updatedByName: updatedByName,
         );
@@ -147,7 +147,7 @@ class ScheduleModel {
           checkInMinute: 0,
           checkOutHour: 13,
           checkOutMinute: 0,
-          toleranceMinutes: 10,
+          toleranceMinutes: 30,
           updatedAt: DateTime.now(),
           updatedByName: updatedByName,
         );
@@ -160,7 +160,7 @@ class ScheduleModel {
           checkInMinute: 0,
           checkOutHour: 19,
           checkOutMinute: 0,
-          toleranceMinutes: 10,
+          toleranceMinutes: 30,
           updatedAt: DateTime.now(),
           updatedByName: updatedByName,
         );
@@ -172,7 +172,7 @@ class ScheduleModel {
           checkInMinute: 0,
           checkOutHour: 17,
           checkOutMinute: 0,
-          toleranceMinutes: 10,
+          toleranceMinutes: 30,
           updatedAt: DateTime.now(),
           updatedByName: updatedByName,
         );
@@ -218,7 +218,7 @@ class ScheduleModel {
   ScheduleEvaluation evaluateAttendance(DateTime timestamp, bool isCheckIn) {
     if (type == ScheduleType.flexible) {
       final local = timestamp.toLocal();
-      final isMorning = local.hour < 13 || (local.hour == 13 && local.minute <= 15);
+      final isMorning = local.hour < 12;
 
       if (isMorning) {
         const targetHour = 8;
@@ -262,16 +262,18 @@ class ScheduleModel {
   }
 
   /// Evalúa si una marca de entrada fue a tiempo considerando la tolerancia
-  bool isPunctual(DateTime checkInDateTime) {
+    bool isPunctual(DateTime checkInDateTime) {
+    final local = checkInDateTime.toLocal();
     final entryMinutes = checkInHour * 60 + checkInMinute;
-    final actualMinutes = checkInDateTime.hour * 60 + checkInDateTime.minute;
+    final actualMinutes = local.hour * 60 + local.minute;
     return actualMinutes <= (entryMinutes + toleranceMinutes);
   }
 
   /// Calcula cuántos minutos de tardanza hubo (0 si fue a tiempo)
   int minutesLate(DateTime checkInDateTime) {
+    final local = checkInDateTime.toLocal();
     final entryMinutes = checkInHour * 60 + checkInMinute;
-    final actualMinutes = checkInDateTime.hour * 60 + checkInDateTime.minute;
+    final actualMinutes = local.hour * 60 + local.minute;
     final diff = actualMinutes - (entryMinutes + toleranceMinutes);
     return diff > 0 ? diff : 0;
   }

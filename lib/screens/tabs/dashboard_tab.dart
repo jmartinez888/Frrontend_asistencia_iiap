@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import '../../utils/responsive.dart';
 import '../../models/user_model.dart';
 import '../../models/attendance_model.dart';
 import '../../models/schedule_model.dart';
@@ -189,7 +190,10 @@ class _DashboardTabState extends State<DashboardTab> {
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
-              child: Column(
+              child: Responsive.constrained(
+                context,
+                maxTabletWidth: 920,
+                child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Tarjeta de Bienvenida y Rol
@@ -362,33 +366,66 @@ class _DashboardTabState extends State<DashboardTab> {
                 // - Administrador: SOLO botón "Generar QR"
                 // - Supervisores: AMBOS botones ("Generar QR" y "Escanear QR" para marcar su propia asistencia)
                 // - Personal regular: SOLO botón "Escanear QR"
-                if (user.canManageAttendanceQr) ...[
-                  _buildActionCard(
-                    context,
-                    title: 'Generar QR de Asistencia',
-                    subtitle: 'Emisión institucional con cifrado SHA-256 (Rotación automática)',
-                    icon: Icons.qr_code_2_rounded,
-                    color: const Color(0xFF16A34A),
-                    badgeText: 'SHA-256',
-                    badgeColor: const Color(0xFF16A34A),
-                    isLocked: false,
-                    onTap: () => _handleGenerarQr(context, user),
+                if (user.isSupervisor && Responsive.isTablet(context)) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildActionCard(
+                          context,
+                          title: 'Generar QR de Asistencia',
+                          subtitle: 'Emisión con cifrado SHA-256 (Rotación automática)',
+                          icon: Icons.qr_code_2_rounded,
+                          color: const Color(0xFF16A34A),
+                          badgeText: 'SHA-256',
+                          badgeColor: const Color(0xFF16A34A),
+                          isLocked: false,
+                          onTap: () => _handleGenerarQr(context, user),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: _buildActionCard(
+                          context,
+                          title: 'Escanear QR',
+                          subtitle: 'Registra tu asistencia escaneando el QR institucional',
+                          icon: Icons.qr_code_scanner_rounded,
+                          color: const Color(0xFF2563EB),
+                          badgeText: 'CÁMARA',
+                          badgeColor: const Color(0xFF2563EB),
+                          isLocked: false,
+                          onTap: () => _handleEscanearQr(context),
+                        ),
+                      ),
+                    ],
                   ),
-                  if (user.isSupervisor) const SizedBox(height: 12),
-                ],
-
-                if (!user.isAdmin) ...[
-                  _buildActionCard(
-                    context,
-                    title: 'Escanear QR',
-                    subtitle: 'Registra tu asistencia escaneando el código QR institucional',
-                    icon: Icons.qr_code_scanner_rounded,
-                    color: const Color(0xFF2563EB),
-                    badgeText: 'CÁMARA',
-                    badgeColor: const Color(0xFF2563EB),
-                    isLocked: false,
-                    onTap: () => _handleEscanearQr(context),
-                  ),
+                ] else ...[
+                  if (user.canManageAttendanceQr) ...[
+                    _buildActionCard(
+                      context,
+                      title: 'Generar QR de Asistencia',
+                      subtitle: 'Emisión institucional con cifrado SHA-256 (Rotación automática)',
+                      icon: Icons.qr_code_2_rounded,
+                      color: const Color(0xFF16A34A),
+                      badgeText: 'SHA-256',
+                      badgeColor: const Color(0xFF16A34A),
+                      isLocked: false,
+                      onTap: () => _handleGenerarQr(context, user),
+                    ),
+                    if (user.isSupervisor) const SizedBox(height: 12),
+                  ],
+                  if (!user.isAdmin) ...[
+                    _buildActionCard(
+                      context,
+                      title: 'Escanear QR',
+                      subtitle: 'Registra tu asistencia escaneando el código QR institucional',
+                      icon: Icons.qr_code_scanner_rounded,
+                      color: const Color(0xFF2563EB),
+                      badgeText: 'CÁMARA',
+                      badgeColor: const Color(0xFF2563EB),
+                      isLocked: false,
+                      onTap: () => _handleEscanearQr(context),
+                    ),
+                  ],
                 ],
 
                 const SizedBox(height: 24),
@@ -503,7 +540,8 @@ class _DashboardTabState extends State<DashboardTab> {
                   )
                 else
                   ..._todayRecords.map((r) => AttendanceCard(record: r, showUserName: false)),
-              ],
+                ],
+              ),
             ),
           ),
         ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../utils/responsive.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/qr_model.dart';
@@ -234,7 +235,7 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
+              constraints: BoxConstraints(maxWidth: Responsive.isTablet(context) ? (Responsive.isLargeTablet(context) ? 680 : 580) : 440),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -381,8 +382,8 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                       ],
                     ),
                     child: _isLoading
-                        ? const SizedBox(
-                            height: 250,
+                        ? SizedBox(
+                            height: Responsive.qrDisplaySize(context) + 20,
                             child: Center(
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
@@ -437,7 +438,7 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                                       key: ValueKey(_qrData!.qrCode),
                                       data: _qrData!.qrCode,
                                       version: QrVersions.auto,
-                                      size: 230,
+                                      size: Responsive.qrDisplaySize(context),
                                       backgroundColor: Colors.white,
                                       eyeStyle: const QrEyeStyle(
                                         eyeShape: QrEyeShape.square,

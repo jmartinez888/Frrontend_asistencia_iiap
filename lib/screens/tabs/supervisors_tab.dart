@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import '../../utils/responsive.dart';
 import '../../models/user_model.dart';
 import '../../models/schedule_model.dart';
 import '../../services/users_service.dart';
@@ -446,10 +447,10 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                     ],
                   ),
                   Slider(
-                    value: tolerance.toDouble(),
+                    value: tolerance.toDouble().clamp(0.0, 60.0),
                     min: 0,
-                    max: 30,
-                    divisions: 6,
+                    max: 60,
+                    divisions: 12,
                     activeColor: ThemeService.primaryColor(context),
                     onChanged: (val) {
                       setSheetState(() => tolerance = val.toInt());
@@ -669,7 +670,10 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                 )
               : RefreshIndicator(
                   onRefresh: _loadData,
-                  child: ListView(
+                  child: Responsive.constrained(
+                    context,
+                    maxTabletWidth: 860,
+                    child: ListView(
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                     children: [
                       // Tarjeta de Cupos de Supervisores (SOLO ADMIN)
@@ -998,6 +1002,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                     ],
                   ),
                 ),
+              ),
     );
   }
 }

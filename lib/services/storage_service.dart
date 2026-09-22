@@ -6,6 +6,20 @@ import '../models/user_model.dart';
 class StorageService {
   static const String _keyToken = 'auth_token';
   static const String _keyUserData = 'auth_user_data';
+  static const String _keyDeviceId = 'unique_device_id_v1';
+
+  /// Obtiene o genera un identificador único persistente para este celular (Anti-Préstamo)
+  static Future<String> getOrCreateDeviceId() async {
+    final prefs = await SharedPreferences.getInstance();
+    var deviceId = prefs.getString(_keyDeviceId);
+    if (deviceId == null || deviceId.isEmpty) {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final rand = (now ^ 0x5DEECE66D).abs().toRadixString(16);
+      deviceId = 'device_${now}_$rand';
+      await prefs.setString(_keyDeviceId, deviceId);
+    }
+    return deviceId;
+  }
 
   static UserModel? get currentUser => currentUserNotifier.value;
   static final ValueNotifier<UserModel?> currentUserNotifier = ValueNotifier<UserModel?>(null);

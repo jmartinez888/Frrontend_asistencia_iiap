@@ -111,11 +111,15 @@ class ApiClient {
     }
   }
 
-  static Future<dynamic> delete(String url, {bool requiresAuth = true}) async {
+  static Future<dynamic> delete(String url, {Map<String, dynamic>? body, bool requiresAuth = true}) async {
     try {
       final headers = await _headers(requiresAuth: requiresAuth);
       final response = await http
-          .delete(Uri.parse(url), headers: headers)
+          .delete(
+            Uri.parse(url),
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          )
           .timeout(const Duration(seconds: 15));
       return _processResponse(response);
     } on SocketException {

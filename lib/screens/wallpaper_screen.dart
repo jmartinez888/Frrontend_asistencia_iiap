@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import '../utils/responsive.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/theme_service.dart';
 import '../services/wallpaper_service.dart';
@@ -178,6 +179,16 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
     final primary = ThemeService.primaryColor(context);
 
     // Separar presets por categoría
+    // Nueva seccion Animes (Inuyasha, Izumi Miyamura)
+
+    final animesPresets = WallpaperService.presets.where((p) => p.category == 'Animes').toList();
+
+
+    // Nueva seccion Fondos Rojos
+
+    final rojosPresets = WallpaperService.presets.where((p) => p.category == 'Rojos').toList();
+
+
     final chicasPresets = WallpaperService.presets
         .where((p) => p.category == 'Chicas')
         .toList();
@@ -256,9 +267,112 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
         builder: (context, activeWallpaper, _) {
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            child: Column(
+            child: Responsive.constrained(
+              context,
+              maxTabletWidth: 900,
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // SECCION: ANIMES (Inuyasha, Izumi Miyamura)
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFA855F7).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.animation_rounded,
+                        color: Color(0xFFA855F7),
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'COLECCIÓN ANIMES',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                        color: isDark ? const Color(0xFFC084FC) : const Color(0xFF7E22CE),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 310,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: animesPresets.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 14),
+                    itemBuilder: (context, index) {
+                      final item = animesPresets[index];
+                      final isSelected = activeWallpaper.id == item.id;
+
+                      return _buildPresetCard(
+                        item: item,
+                        isSelected: isSelected,
+                        primary: primary,
+                        onTap: () => WallpaperService.setPreset(item),
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // SECCION: FONDOS ROJOS (Red Neon Cyber, Seda Rubi)
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.local_fire_department_rounded,
+                        color: Color(0xFFEF4444),
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'COLECCIÓN ROJO & CYBER',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                        color: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 310,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: rojosPresets.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 14),
+                    itemBuilder: (context, index) {
+                      final item = rojosPresets[index];
+                      final isSelected = activeWallpaper.id == item.id;
+
+                      return _buildPresetCard(
+                        item: item,
+                        isSelected: isSelected,
+                        primary: primary,
+                        onTap: () => WallpaperService.setPreset(item),
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
                 // SECCIÓN: CHICAS & ANIME CUTE (Pucca, Angela, Anime Chica, Sakura)
                 Row(
                   children: [
@@ -469,10 +583,11 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                 const SizedBox(height: 36),
               ],
             ),
-          );
-        },
-      ),
-    );
+          ),
+        );
+      },
+    ),
+  );
   }
 
   Widget _buildPresetCard({

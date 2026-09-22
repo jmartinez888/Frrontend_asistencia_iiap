@@ -42,17 +42,13 @@ class MyApp extends StatelessWidget {
         WallpaperService.wallpaperNotifier,
       ]),
       builder: (context, _) {
-        final currentMode = ThemeService.themeModeNotifier.value;
         final accent = ThemeService.currentAccent;
         final hasWallpaper = WallpaperService.currentWallpaper.hasWallpaper;
-        final effectiveThemeMode =
-            currentMode == ThemeMode.system ? ThemeMode.dark : currentMode;
-
         return MaterialApp(
           title: 'IIAP Asistencia',
           debugShowCheckedModeBanner: false,
           themeAnimationDuration: Duration.zero,
-          themeMode: effectiveThemeMode,
+          themeMode: ThemeMode.dark,
           theme: ThemeData(
             brightness: Brightness.light,
             primaryColor: accent.lightPrimary,

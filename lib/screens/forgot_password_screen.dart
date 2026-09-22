@@ -163,22 +163,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          ValueListenableBuilder<ThemeMode>(
-            valueListenable: ThemeService.themeModeNotifier,
-            builder: (context, mode, _) {
-              final activeDark = mode == ThemeMode.dark || mode == ThemeMode.system;
-              return IconButton(
-                icon: Icon(
-                  activeDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                  color: activeDark ? const Color(0xFFFFB74D) : ThemeService.primaryColor(context),
-                ),
-                tooltip: activeDark ? 'Modo Claro' : 'Modo Oscuro',
-                onPressed: () => ThemeService.toggleDarkMode(!activeDark),
-              );
-            },
-          ),
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(

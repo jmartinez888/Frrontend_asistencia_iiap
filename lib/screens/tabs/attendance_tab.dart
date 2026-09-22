@@ -1,8 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import '../../utils/responsive.dart';
 import '../../models/attendance_model.dart';
 import '../../models/user_model.dart';
 import '../../services/storage_service.dart';
 import '../../services/attendance_service.dart';
+import '../../services/pdf_report_service.dart';
 import '../../widgets/attendance_card.dart';
 import '../../services/theme_service.dart';
 
@@ -21,6 +23,7 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
   bool _isLoadingAll = false;
   bool _hasFetchedMy = false;
   bool _hasFetchedAll = false;
+  bool _isGeneratingPdf = false;
 
   @override
   void initState() {
@@ -83,6 +86,302 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
         });
       }
     }
+  }
+
+  Future<void> _exportPdfReport() async {
+    final user = StorageService.currentUserNotifier.value;
+    if (user == null) return;
+
+    if (_allRecords.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay registros de asistencias para exportar.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isGeneratingPdf = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Generando Reporte Oficial PDF del IIAP...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    try {
+      await PdfReportService.generateAndPreviewReport(
+        records: _allRecords,
+        currentUser: user,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al generar PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isGeneratingPdf = false);
+      }
+    }
+  }
+
+  Future<void> _showManualAttendanceDialog() async {
+    final dniController = TextEditingController();
+    final obsController = TextEditingController();
+    AttendanceType selectedType = AttendanceType.CHECK_IN;
+    bool isSubmitting = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final primaryColor = ThemeService.primaryColor(context);
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            backgroundColor: ThemeService.cardBg(context),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.emergency_outlined, color: Colors.amber, size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Marca de Contingencia',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Registrar asistencia manual para un colaborador con celular extraviado, robado o averiado.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Campo DNI
+                  const Text('Documento / DNI del Colaborador *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: dniController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 8,
+                    decoration: InputDecoration(
+                      hintText: 'Ingrese los 8 dígitos del DNI',
+                      prefixIcon: const Icon(Icons.badge_outlined, size: 20),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      counterText: '',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Selector de Tipo: ENTRADA / SALIDA
+                  const Text('Tipo de Marcación *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setDialogState(() => selectedType = AttendanceType.CHECK_IN),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: selectedType == AttendanceType.CHECK_IN
+                                  ? Colors.green.withValues(alpha: 0.2)
+                                  : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04)),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: selectedType == AttendanceType.CHECK_IN ? Colors.green : Colors.transparent,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.login_rounded,
+                                  size: 18,
+                                  color: selectedType == AttendanceType.CHECK_IN ? Colors.green : Colors.grey,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'ENTRADA',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: selectedType == AttendanceType.CHECK_IN ? Colors.green : Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setDialogState(() => selectedType = AttendanceType.CHECK_OUT),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: selectedType == AttendanceType.CHECK_OUT
+                                  ? Colors.orange.withValues(alpha: 0.2)
+                                  : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04)),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: selectedType == AttendanceType.CHECK_OUT ? Colors.orange : Colors.transparent,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.logout_rounded,
+                                  size: 18,
+                                  color: selectedType == AttendanceType.CHECK_OUT ? Colors.orange : Colors.grey,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'SALIDA',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: selectedType == AttendanceType.CHECK_OUT ? Colors.orange : Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Observación / Justificación
+                  const Text('Motivo / Observación *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: obsController,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      hintText: 'Ej. Celular averiado / Robo de equipo en trayecto',
+                      prefixIcon: const Icon(Icons.edit_note_rounded, size: 20),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.of(ctx).pop(),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        final dni = dniController.text.trim();
+                        final obs = obsController.text.trim();
+
+                        if (dni.length != 8) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('El DNI debe contener exactamente 8 dígitos.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+
+                        if (obs.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Debe ingresar el motivo de contingencia.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        final navigator = Navigator.of(ctx);
+
+                        setDialogState(() => isSubmitting = true);
+                        try {
+                          final res = await AttendanceService.registerManualAttendance(
+                            dni: dni,
+                            type: selectedType == AttendanceType.CHECK_IN ? 'CHECK_IN' : 'CHECK_OUT',
+                            observation: obs,
+                          );
+
+                          navigator.pop();
+                          scaffoldMessenger.showSnackBar(
+                            SnackBar(
+                              content: Text(res['message']?.toString() ?? 'Asistencia registrada con éxito.'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                          if (mounted) {
+                            _loadAllRecords();
+                            if (_tabController != null) {
+                              _loadMyRecords();
+                            }
+                          }
+                        } catch (e) {
+                          setDialogState(() => isSubmitting = false);
+                          scaffoldMessenger.showSnackBar(
+                            SnackBar(
+                              content: Text('Error: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text('Registrar Asistencia'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _confirmWeeklyReset() async {
@@ -149,21 +448,34 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     return ValueListenableBuilder<UserModel?>(
       valueListenable: StorageService.currentUserNotifier,
       builder: (context, user, _) {
         final isAdmin = user != null && user.isAdmin;
         final isSupervisor = user != null && user.isSupervisor;
 
-        // 1. Administrador General: NO tiene "Mis Asistencias", SOLO Registro Institucional
+        // 1. Administrador General: SOLO Registro Institucional
         if (isAdmin) {
           return Scaffold(
-          appBar: AppBar(
+            appBar: AppBar(
               title: const Text('Registro Institucional', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               actions: [
+                IconButton(
+                  icon: const Icon(Icons.person_add_alt_1_rounded),
+                  tooltip: 'Marcación Manual de Emergencia',
+                  onPressed: _showManualAttendanceDialog,
+                ),
+                IconButton(
+                  icon: _isGeneratingPdf
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.picture_as_pdf_rounded),
+                  tooltip: 'Exportar Reporte PDF (Entradas y Salidas)',
+                  onPressed: _isGeneratingPdf ? null : _exportPdfReport,
+                ),
                 IconButton(
                   icon: const Icon(Icons.cleaning_services_rounded),
                   tooltip: 'Reinicio Semanal (Viernes 10:00 PM)',
@@ -188,7 +500,7 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
             });
           }
           return Scaffold(
-          appBar: AppBar(
+            appBar: AppBar(
               title: const Text('Historial de Asistencias', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               actions: [
                 IconButton(
@@ -211,10 +523,27 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
             });
           }
         }
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return Scaffold(
           appBar: AppBar(
             title: const Text('Control de Asistencias', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.person_add_alt_1_rounded),
+                tooltip: 'Marcación Manual de Emergencia',
+                onPressed: _showManualAttendanceDialog,
+              ),
+              IconButton(
+                icon: _isGeneratingPdf
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.picture_as_pdf_rounded),
+                tooltip: 'Exportar Reporte PDF (Entradas y Salidas)',
+                onPressed: _isGeneratingPdf ? null : _exportPdfReport,
+              ),
               IconButton(
                 icon: const Icon(Icons.refresh_rounded),
                 onPressed: () {
@@ -259,8 +588,7 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
     Future<void> Function() onRefresh, {
     required bool showUserName,
   }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -301,15 +629,19 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
 
     return RefreshIndicator(
       onRefresh: onRefresh,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        itemCount: records.length,
-        itemBuilder: (context, index) {
-          return AttendanceCard(
-            record: records[index],
-            showUserName: showUserName,
-          );
-        },
+      child: Responsive.constrained(
+        context,
+        maxTabletWidth: 860,
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          itemCount: records.length,
+          itemBuilder: (context, index) {
+            return AttendanceCard(
+              record: records[index],
+              showUserName: showUserName,
+            );
+          },
+        ),
       ),
     );
   }

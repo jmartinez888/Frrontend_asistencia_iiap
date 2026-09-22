@@ -97,4 +97,67 @@ class AuthService {
     );
     return response['message']?.toString() ?? 'Contraseña actualizada exitosamente.';
   }
+
+  /// 1. Solicitar código OTP de 6 dígitos para cambio de correo
+  static Future<String> requestEmailChange(String newEmail) async {
+    final response = await ApiClient.post(
+      '${ApiConfig.baseUrl}/auth/request-email-change',
+      body: {
+        'new_email': newEmail.trim().toLowerCase(),
+      },
+    );
+    return response['message']?.toString() ?? 'Código de verificación enviado al nuevo correo.';
+  }
+
+  /// 2. Confirmar cambio de correo electrónico con código de 6 dígitos
+  static Future<UserModel> confirmEmailChange({
+    required String newEmail,
+    required String code,
+  }) async {
+    final response = await ApiClient.post(
+      '${ApiConfig.baseUrl}/auth/confirm-email-change',
+      body: {
+        'new_email': newEmail.trim().toLowerCase(),
+        'code': code.trim(),
+      },
+    );
+    final data = response as Map<String, dynamic>;
+    final userMap = data['user'] as Map<String, dynamic>;
+    final updatedUser = UserModel.fromJson(userMap);
+    if (data['access_token'] != null) {
+      await StorageService.saveSession(
+        token: data['access_token'].toString(),
+        user: updatedUser,
+      );
+    } else {
+      await StorageService.updateCurrentUser(updatedUser);
+    }
+    return updatedUser;
+  }
+
+  /// 3. Eliminar / Desactivar la cuenta propia del usuario
+  static Future<String> deleteMyAccount(String password) async {
+    final response = await ApiClient.delete(
+      '${ApiConfig.baseUrl}/users/me/account',
+      body: {
+        'password': password,
+      },
+    );
+    await StorageService.clearSession();
+    return response['message']?.toString() ?? 'Tu cuenta ha sido eliminada con éxito.';
+  }
+  /// 4. Cambiar contraseña estando autenticado
+  static Future<String> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final response = await ApiClient.post(
+      '${ApiConfig.baseUrl}/auth/change-password',
+      body: {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      },
+    );
+    return response['message']?.toString() ?? 'Contraseña actualizada exitosamente.';
+  }
 }

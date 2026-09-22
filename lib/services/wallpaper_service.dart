@@ -51,6 +51,78 @@ class WallpaperService {
   );
 
   static const List<WallpaperItem> presets = [
+    // Seccion ANIMES (Inuyasha, Miyamura, Ichigo, Aizen)
+    WallpaperItem(
+      id: 'inuyasha_chibi_red',
+      title: 'INUYASHA CHIBI RED',
+      category: 'Animes',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_inuyasha_chibi_red.jpg',
+    ),
+    WallpaperItem(
+      id: 'inuyasha_chibi_black',
+      title: 'INUYASHA CHIBI NIGHT',
+      category: 'Animes',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_inuyasha_chibi_black.jpg',
+    ),
+    WallpaperItem(
+      id: 'ichigo_bankai',
+      title: 'ICHIGO BANKAI',
+      category: 'Animes',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_ichigo_bankai.jpg',
+    ),
+    WallpaperItem(
+      id: 'aizen_throne',
+      title: 'LORD AIZEN TRONO',
+      category: 'Animes',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_aizen_throne.jpg',
+    ),
+    WallpaperItem(
+      id: 'inuyasha_luna',
+      title: 'INUYASHA LUNA',
+      category: 'Animes',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_inuyasha_luna.jpg',
+    ),
+    WallpaperItem(
+      id: 'inuyasha_torii',
+      title: 'INUYASHA TORII',
+      category: 'Animes',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_inuyasha_torii.jpg',
+    ),
+    WallpaperItem(
+      id: 'miyamura_sunset',
+      title: 'MIYAMURA ROOFTOP',
+      category: 'Animes',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_miyamura_sunset.jpg',
+    ),
+    WallpaperItem(
+      id: 'miyamura_winter',
+      title: 'MIYAMURA INVIERNO',
+      category: 'Animes',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_miyamura_winter.jpg',
+    ),
+    // Seccion ROJOS (Red Neon Cyber, Seda Rubi)
+    WallpaperItem(
+      id: 'red_neon',
+      title: 'RED NEON CYBER',
+      category: 'Rojos',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_red_neon.jpg',
+    ),
+    WallpaperItem(
+      id: 'ruby_silk',
+      title: 'SEDA RUBI VELVET',
+      category: 'Rojos',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_ruby_silk.jpg',
+    ),
     // Para Chicas & Estilo Cute / Anime
     WallpaperItem(
       id: 'pucca',

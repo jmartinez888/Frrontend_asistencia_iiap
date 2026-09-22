@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/theme_service.dart';
 import '../services/auth_service.dart';
 import '../services/api_client.dart';
@@ -24,6 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  String _documentType = 'DNI';
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
@@ -120,7 +122,144 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  void _showDocumentTypeSelector() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF13111C) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(
+              color: ThemeService.cardBorder(ctx),
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Tipo de Documento de Identidad',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                _buildDocTypeOption(
+                  ctx: ctx,
+                  type: 'DNI',
+                  title: 'DNI (Documento Nacional de Identidad)',
+                  subtitle: 'Exactamente 8 dígitos numéricos (Perú)',
+                  icon: Icons.badge_outlined,
+                ),
+                const SizedBox(height: 10),
+                _buildDocTypeOption(
+                  ctx: ctx,
+                  type: 'CE',
+                  title: 'CE (Carné de Extranjería)',
+                  subtitle: 'Exactamente 9 caracteres alfanuméricos',
+                  icon: Icons.credit_card_outlined,
+                ),
+                const SizedBox(height: 10),
+                _buildDocTypeOption(
+                  ctx: ctx,
+                  type: 'Pasaporte',
+                  title: 'Pasaporte',
+                  subtitle: 'De 6 a 12 caracteres alfanuméricos',
+                  icon: Icons.menu_book_outlined,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
+  Widget _buildDocTypeOption({
+    required BuildContext ctx,
+    required String type,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
+    final isDark = Theme.of(ctx).brightness == Brightness.dark;
+    final isSelected = _documentType == type;
+    final primary = ThemeService.primaryColor(ctx);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () {
+        Navigator.pop(ctx);
+        if (_documentType != type) {
+          setState(() {
+            _documentType = type;
+            _documentController.clear();
+          });
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? primary.withValues(alpha: 0.15)
+              : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? primary : ThemeService.cardBorder(ctx),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: isSelected ? primary : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? primary : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(Icons.check_circle_rounded, color: primary, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -146,23 +285,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ],
         ),
-        actions: [
-          ValueListenableBuilder<ThemeMode>(
-            valueListenable: ThemeService.themeModeNotifier,
-            builder: (context, mode, _) {
-              final activeDark = mode == ThemeMode.dark || mode == ThemeMode.system;
-              return IconButton(
-                icon: Icon(
-                  activeDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                  color: activeDark ? const Color(0xFFFFB74D) : ThemeService.primaryColor(context),
-                ),
-                tooltip: activeDark ? 'Modo Claro' : 'Modo Oscuro',
-                onPressed: () => ThemeService.toggleDarkMode(!activeDark),
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -250,7 +372,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Campos
+                    // Nombre Completo
                     AppTextField(
                       controller: _nameController,
                       label: 'Nombre Completo',
@@ -265,16 +387,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 16),
 
+                    // Correo Electrónico
                     AppTextField(
                       controller: _emailController,
                       label: 'Correo Electrónico',
-                      hint: 'Escribe tu correo electrónico',
+                      hint: 'Escribe tu correo (debe terminar en .com)',
                       prefixIcon: Icons.email_outlined,
                       keyboardType: TextInputType.emailAddress,
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'El correo es obligatorio';
-                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v.trim())) {
-                          return 'Ingresa un correo electrónico válido';
+                        final clean = v.trim();
+                        if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[cC][oO][mM]$').hasMatch(clean)) {
+                          return 'Ingresa un correo válido que termine en .com';
                         }
                         return null;
                       },
@@ -282,25 +406,127 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 16),
 
+                    // Selector de Tipo de Documento de Identidad
+                    InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: _showDocumentTypeSelector,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: ThemeService.cardBg(context),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: ThemeService.cardBorder(context)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.badge_outlined, color: ThemeService.primaryColor(context), size: 20),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Documento de Identidad: ',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: ThemeService.primaryColor(context).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                _documentType,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: ThemeService.primaryColor(context),
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              'Cambiar',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: ThemeService.primaryColor(context),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: ThemeService.primaryColor(context)),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Fila: Nº de Documento de Identidad + Teléfono (9 dígitos)
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Campo Documento Dinámico
                         Expanded(
                           child: AppTextField(
                             controller: _documentController,
-                            label: 'DNI / Documento',
-                            hint: '8 dígitos',
-                            prefixIcon: Icons.badge_outlined,
-                            keyboardType: TextInputType.number,
+                            label: 'Nº $_documentType',
+                            hint: _documentType == 'DNI'
+                                ? '8 dígitos'
+                                : (_documentType == 'CE' ? '9 caracteres' : '6 a 12 caract.'),
+                            prefixIcon: Icons.fingerprint_rounded,
+                            keyboardType: _documentType == 'DNI' ? TextInputType.number : TextInputType.text,
+                            maxLength: _documentType == 'DNI' ? 8 : (_documentType == 'CE' ? 9 : 12),
+                            inputFormatters: [
+                              if (_documentType == 'DNI') FilteringTextInputFormatter.digitsOnly,
+                              if (_documentType != 'DNI') FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                              LengthLimitingTextInputFormatter(
+                                _documentType == 'DNI' ? 8 : (_documentType == 'CE' ? 9 : 12),
+                              ),
+                            ],
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) {
+                                return 'El $_documentType es obligatorio';
+                              }
+                              final clean = v.trim();
+                              if (_documentType == 'DNI') {
+                                if (clean.length != 8 || !RegExp(r'^\d{8}$').hasMatch(clean)) {
+                                  return 'Debe tener 8 dígitos';
+                                }
+                              } else if (_documentType == 'CE') {
+                                if (clean.length != 9 || !RegExp(r'^[a-zA-Z0-9]{9}$').hasMatch(clean)) {
+                                  return 'Debe tener 9 caracteres';
+                                }
+                              } else if (_documentType == 'Pasaporte') {
+                                if (clean.length < 6 || clean.length > 12 || !RegExp(r'^[a-zA-Z0-9]{6,12}$').hasMatch(clean)) {
+                                  return 'Entre 6 y 12 caracteres';
+                                }
+                              }
+                              return null;
+                            },
                           ),
                         ),
                         const SizedBox(width: 14),
+                        // Campo Teléfono (9 dígitos)
                         Expanded(
                           child: AppTextField(
                             controller: _phoneController,
-                            label: 'Teléfono / Móvil',
+                            label: 'Teléfono',
                             hint: '9 dígitos',
                             prefixIcon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
+                            maxLength: 9,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(9),
+                            ],
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) return 'El teléfono es obligatorio';
+                              final clean = v.trim();
+                              if (clean.length != 9 || !RegExp(r'^\d{9}$').hasMatch(clean)) {
+                                return 'Debe tener 9 dígitos';
+                              }
+                              return null;
+                            },
                           ),
                         ),
                       ],
@@ -308,10 +534,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 16),
 
+                    // Contraseña (Fuerte)
                     AppTextField(
                       controller: _passwordController,
                       label: 'Contraseña',
-                      hint: 'Mínimo 6 caracteres',
+                      hint: 'Mínimo 8 caract. (Mayús, Minús, Núm, Símbolo)',
                       prefixIcon: Icons.lock_outline_rounded,
                       obscureText: _obscurePassword,
                       suffixIcon: IconButton(
@@ -324,13 +551,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'La contraseña es obligatoria';
-                        if (v.length < 6) return 'Debe tener al menos 6 caracteres';
+                        if (v.length < 8) return 'Debe tener al menos 8 caracteres';
+                        if (!RegExp(r'[A-Z]').hasMatch(v)) {
+                          return 'Debe incluir al menos una letra mayúscula (A-Z)';
+                        }
+                        if (!RegExp(r'[a-z]').hasMatch(v)) {
+                          return 'Debe incluir al menos una letra minúscula (a-z)';
+                        }
+                        if (!RegExp(r'\d').hasMatch(v)) {
+                          return 'Debe incluir al menos un número (0-9)';
+                        }
+                          if (!RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\/;~`]').hasMatch(v)) {
+                            return 'Debe incluir al menos un símbolo especial (!@#\$%)';
+                          }
                         return null;
                       },
                     ),
 
                     const SizedBox(height: 16),
 
+                    // Confirmar Contraseña
                     AppTextField(
                       controller: _confirmPasswordController,
                       label: 'Confirmar Contraseña',
@@ -346,6 +586,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                       ),
                       validator: (v) {
+                        if (v == null || v.isEmpty) return 'Confirma tu contraseña';
                         if (v != _passwordController.text) {
                           return 'Las contraseñas no coinciden';
                         }
@@ -355,6 +596,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 24),
 
+                    // Botón Registrarse
                     AppButton(
                       text: 'Registrarse',
                       icon: Icons.check_circle_outline,
@@ -364,6 +606,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 12),
 
+                    // Enlace a Login
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -397,4 +640,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
-

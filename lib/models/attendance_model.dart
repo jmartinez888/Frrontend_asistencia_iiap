@@ -38,10 +38,13 @@ class AttendanceModel {
   final String? markedById;
   final String? userName;
   final String? userEmail;
+  final String? userDocument;
   final String? markedByName;
   final double? latitude;
   final double? longitude;
   final String? deviceId;
+  final bool isManual;
+  final String? observation;
 
   AttendanceModel({
     required this.id,
@@ -53,14 +56,16 @@ class AttendanceModel {
     this.markedById,
     this.userName,
     this.userEmail,
+    this.userDocument,
     this.markedByName,
     this.latitude,
     this.longitude,
     this.deviceId,
+    this.isManual = false,
+    this.observation,
   });
 
   factory AttendanceModel.fromJson(Map<String, dynamic> json) {
-    // El backend puede enviar las relaciones user y marked_by anidadas
     final userMap = json['user'] is Map ? json['user'] as Map<String, dynamic> : null;
     final markedByMap = json['marked_by'] is Map ? json['marked_by'] as Map<String, dynamic> : null;
 
@@ -78,10 +83,13 @@ class AttendanceModel {
       markedById: json['marked_by_id']?.toString() ?? markedByMap?['id']?.toString(),
       userName: json['user_name']?.toString() ?? userMap?['full_name']?.toString(),
       userEmail: json['user_email']?.toString() ?? userMap?['email']?.toString(),
+      userDocument: userMap?['document_number']?.toString(),
       markedByName: json['marked_by_name']?.toString() ?? markedByMap?['full_name']?.toString(),
       latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
       longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
       deviceId: json['device_id']?.toString(),
+      isManual: json['is_manual'] == true,
+      observation: json['observation']?.toString(),
     );
   }
 }

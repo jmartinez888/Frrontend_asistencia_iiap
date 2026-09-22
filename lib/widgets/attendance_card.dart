@@ -324,7 +324,7 @@ class AttendanceCard extends StatelessWidget {
             Icon(Icons.error_outline_rounded, size: 11, color: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626)),
             const SizedBox(width: 3),
             Text(
-              'Tardanza (+$lateMinutes m)',
+              'Tardanza (${_formatLateMinutes(lateMinutes)})',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
@@ -388,7 +388,11 @@ class AttendanceCard extends StatelessWidget {
             _buildDetailRow('Fecha:', _formatDate(record.timestamp), isDark),
             _buildDetailRow('Modalidad Laboral:', schedule.type == ScheduleType.flexible ? 'Personal Dinámico' : schedule.type.categoryName, isDark),
             _buildDetailRow('Turno Asignado:', evaluation.shiftLabel, isDark),
-            _buildDetailRow('Tolerancia Asignada:', '10 minutos', isDark),
+            if (record.isManual)
+              _buildDetailRow('Modalidad:', 'Marcación Manual de Emergencia', isDark, highlightColor: Colors.amber),
+            if (record.observation != null && record.observation!.isNotEmpty)
+              _buildDetailRow('Justificación / Motivo:', record.observation!, isDark),
+            _buildDetailRow('Tolerancia Asignada:', '${schedule.toleranceMinutes} minutos', isDark),
             _buildDetailRow(
               'Puntualidad:',
               record.type == AttendanceType.CHECK_IN
@@ -443,18 +447,29 @@ class AttendanceCard extends StatelessWidget {
     );
   }
 
+    String _formatLateMinutes(int minutes) {
+    if (minutes <= 0) return '0 m';
+    if (minutes < 60) return '+$minutes m';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    if (m == 0) return '+${h}h';
+    return '+${h}h ${m}m';
+  }
+
   String _formatTime(DateTime dt) {
-    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final second = dt.second.toString().padLeft(2, '0');
-    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    final local = dt.toLocal();
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final second = local.second.toString().padLeft(2, '0');
+    final ampm = local.hour >= 12 ? 'PM' : 'AM';
     return '$hour:$minute:$second $ampm';
   }
 
   String _formatDate(DateTime dt) {
-    final day = dt.day.toString().padLeft(2, '0');
-    final month = dt.month.toString().padLeft(2, '0');
-    final year = dt.year.toString();
+    final local = dt.toLocal();
+    final day = local.day.toString().padLeft(2, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final year = local.year;
     return '$day/$month/$year';
   }
 }

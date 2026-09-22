@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../utils/responsive.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../services/attendance_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
+import '../../services/storage_service.dart';
 import '../../widgets/app_button.dart';
 
 enum ScanTarget {
@@ -55,15 +58,53 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         return;
       }
 
-      // 2. Modo Asistencia o General: Intentar registrar asistencia
+      // 2. Modo Asistencia o General: Intentar registrar asistencia con GPS y Dispositivo
       try {
-        final result = await AttendanceService.scanAttendanceQr(qrCode: cleanCode);
+        double? lat;
+        double? lng;
+        try {
+          final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+          if (serviceEnabled) {
+            var permission = await Geolocator.checkPermission();
+            if (permission == LocationPermission.denied) {
+              permission = await Geolocator.requestPermission();
+            }
+            if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+              final pos = await Geolocator.getCurrentPosition(
+                locationSettings: const LocationSettings(
+                  accuracy: LocationAccuracy.high,
+                  timeLimit: Duration(seconds: 4),
+                ),
+              );
+              lat = pos.latitude;
+              lng = pos.longitude;
+            }
+          }
+        } catch (e) {
+          debugPrint('Aviso GPS: $e');
+        }
+
+        final deviceId = await StorageService.getOrCreateDeviceId();
+
+        final result = await AttendanceService.scanAttendanceQr(
+          qrCode: cleanCode,
+          latitude: lat,
+          longitude: lng,
+          deviceId: deviceId,
+        );
         if (!mounted) return;
+
+                final scanNow = DateTime.now();
+        final hour = scanNow.hour % 12 == 0 ? 12 : scanNow.hour % 12;
+        final minute = scanNow.minute.toString().padLeft(2, '0');
+        final second = scanNow.second.toString().padLeft(2, '0');
+        final ampm = scanNow.hour >= 12 ? 'p. m.' : 'a. m.';
+        final localFormattedTime = '${hour.toString().padLeft(2, '0')}:$minute:$second $ampm';
 
         await _showSuccessDialog(
           title: '¡Asistencia Registrada!',
           message: result.message,
-          detail: 'Marca: ${result.typeLabel ?? "REGISTRO"} • ${result.formattedTime ?? ""}',
+          detail: 'Marca: ${result.typeLabel ?? "REGISTRO"} • $localFormattedTime',
           isShaVerified: true,
         );
         if (mounted) Navigator.of(context).pop(true);
@@ -403,6 +444,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   Widget build(BuildContext context) {
     final isAttendance = widget.target == ScanTarget.attendance;
     final title = isAttendance ? 'Escanear QR de Asistencia' : 'Escanear Ascenso a Supervisor';
+    final scanBoxSize = Responsive.isTablet(context) ? 360.0 : 260.0;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -468,8 +510,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 Align(
                   alignment: Alignment.center,
                   child: Container(
-                    height: 260,
-                    width: 260,
+                    height: scanBoxSize,
+                    width: scanBoxSize,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(24),
@@ -482,8 +524,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
           // Marco con esquinas redondeadas
           Container(
-            height: 260,
-            width: 260,
+            height: scanBoxSize,
+            width: scanBoxSize,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: const Color(0xFF22C55E), width: 3),

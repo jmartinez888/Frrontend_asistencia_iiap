@@ -1,12 +1,12 @@
-﻿import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import 'package:flutter/material.dart';
 import '../services/theme_service.dart';
+import '../services/auth_service.dart';
 import '../services/api_client.dart';
 import '../widgets/leaf_logo.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
-import 'register_screen.dart';
 import 'home_screen.dart';
+import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -18,20 +18,28 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
-
   bool _obscurePassword = true;
   bool _isLoading = false;
 
+  @override
+  void dispose() {
+    _identifierController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
       final user = await AuthService.login(
-        email: _emailController.text.trim(),
+        email: _identifierController.text.trim(),
         password: _passwordController.text,
       );
 
@@ -45,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '¡Bienvenido(a), ${user.fullName}!',
+                  '¡Bienvenido, ${user.fullName}!',
                   style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
               ),
@@ -54,6 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: ThemeService.primaryColor(context),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 2),
         ),
       );
 
@@ -85,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error inesperado: $e'),
+          content: Text('Error inesperado: '),
           backgroundColor: const Color(0xFFEF4444),
           behavior: SnackBarBehavior.floating,
         ),
@@ -94,8 +103,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -121,23 +128,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
-        actions: [
-          ValueListenableBuilder<ThemeMode>(
-            valueListenable: ThemeService.themeModeNotifier,
-            builder: (context, mode, _) {
-              final activeDark = mode == ThemeMode.dark || mode == ThemeMode.system;
-              return IconButton(
-                icon: Icon(
-                  activeDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                  color: activeDark ? const Color(0xFFFFB74D) : ThemeService.primaryColor(context),
-                ),
-                tooltip: activeDark ? 'Modo Claro' : 'Modo Oscuro',
-                onPressed: () => ThemeService.toggleDarkMode(!activeDark),
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -150,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Header Card
+                    // Tarjeta de Cabecera
                     Container(
                       padding: const EdgeInsets.all(22),
                       decoration: BoxDecoration(
@@ -190,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Iniciar Sesion',
+                                      'Iniciar Sesión',
                                       style: TextStyle(
                                         fontSize: 22,
                                         fontWeight: FontWeight.bold,
@@ -212,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 14),
                           Text(
-                            'Ingresa tus credenciales institucionales para acceder al registro de asistencias y escaneo de codigos QR.',
+                            'Ingresa tus credenciales institucionales para acceder al registro de asistencias y escaneo de códigos QR.',
                             style: TextStyle(
                               fontSize: 13,
                               height: 1.4,
@@ -225,19 +215,27 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Campos del Formulario
+                    // Campo de Correo Electrónico o DNI
                     AppTextField(
-                      controller: _emailController,
-                      label: 'Correo Electronico',
-                      hint: 'ejemplo@iiap.gob.pe',
+                      controller: _identifierController,
+                      label: 'Correo Electrónico o DNI',
+                      hint: 'ejemplo@iiap.com o 8 dígitos',
                       prefixIcon: Icons.email_outlined,
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Ingresa tu correo electronico';
+                          return 'Ingresa tu correo electrónico (.com) o DNI';
                         }
-                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
-                          return 'Ingresa un correo electronico valido';
+                        final clean = value.trim();
+                        final isOnlyDigits = RegExp(r'^\d+$').hasMatch(clean);
+                        if (isOnlyDigits) {
+                          if (clean.length != 8) {
+                            return 'El DNI debe tener exactamente 8 dígitos';
+                          }
+                          return null;
+                        }
+                        if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[cC][oO][mM]$').hasMatch(clean)) {
+                          return 'Ingresa un correo válido que termine en .com';
                         }
                         return null;
                       },
@@ -245,10 +243,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 16),
 
+                    // Campo de Contraseña
                     AppTextField(
                       controller: _passwordController,
                       label: 'Contraseña',
-                      hint: '⬢⬢⬢⬢⬢⬢⬢⬢⬢⬢',
+                      hint: 'Ingresa tu contraseña',
                       prefixIcon: Icons.lock_outline_rounded,
                       obscureText: _obscurePassword,
                       suffixIcon: IconButton(
@@ -262,9 +261,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Ingresa tu contraseña';
-                        }
-                        if (value.length < 6) {
-                          return 'La contraseña debe tener al menos 6 caracteres';
                         }
                         return null;
                       },
@@ -342,4 +338,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

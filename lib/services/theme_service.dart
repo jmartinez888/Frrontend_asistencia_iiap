@@ -193,31 +193,17 @@ class ThemeService {
   static const String _keyThemeMode = 'theme_mode_v3';
   static const String _keyAccentColor = 'selected_accent_color_v3';
 
-  static final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
+  static final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.dark);
   static final ValueNotifier<AppAccentColor> accentColorNotifier = ValueNotifier<AppAccentColor>(AppAccentColor.verdeSelva);
 
   static SharedPreferences? _prefs;
 
-  static bool get isDarkMode =>
-      themeModeNotifier.value == ThemeMode.dark ||
-      themeModeNotifier.value == ThemeMode.system;
+  static bool get isDarkMode => true;
   static AppAccentColor get currentAccent => accentColorNotifier.value;
 
   static Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
-
-    final savedModeStr = _prefs?.getString(_keyThemeMode);
-    if (savedModeStr != null) {
-      if (savedModeStr == 'light') {
-        themeModeNotifier.value = ThemeMode.light;
-      } else if (savedModeStr == 'auto') {
-        themeModeNotifier.value = ThemeMode.system;
-      } else {
-        themeModeNotifier.value = ThemeMode.dark;
-      }
-    } else {
-      themeModeNotifier.value = ThemeMode.system;
-    }
+    themeModeNotifier.value = ThemeMode.dark;
 
     final savedAccent = _prefs?.getString(_keyAccentColor);
     accentColorNotifier.value = AppAccentColor.fromId(savedAccent ?? 'green');

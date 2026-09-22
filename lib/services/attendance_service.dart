@@ -83,4 +83,24 @@ class AttendanceService {
     final response = await ApiClient.delete(ApiConfig.attendanceWeeklyReset);
     return response as Map<String, dynamic>;
   }
+
+  /// Registrar asistencia manual de contingencia (Supervisor o Admin)
+  static Future<Map<String, dynamic>> registerManualAttendance({
+    String? userId,
+    String? dni,
+    required String type,
+    required String observation,
+  }) async {
+    final response = await ApiClient.post(
+      '${ApiConfig.baseUrl}/attendance/manual-record',
+      body: {
+        if (userId != null && userId.isNotEmpty) 'user_id': userId,
+        if (dni != null && dni.isNotEmpty) 'dni': dni,
+        'type': type,
+        'observation': observation,
+      },
+    );
+    return response as Map<String, dynamic>;
+  }
+
 }
