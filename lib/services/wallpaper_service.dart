@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'theme_service.dart';
 import 'package:flutter/services.dart';
@@ -51,6 +51,35 @@ class WallpaperService {
   );
 
   static const List<WallpaperItem> presets = [
+    // SECCIÓN FONDOS OSCUROS & AMOLED (Cyber Matrix, Nebula Abyss, Carbon Fiber, Shadow Ronin)
+    WallpaperItem(
+      id: 'dark_matrix',
+      title: 'CYBER MATRIX OBSIDIAN',
+      category: 'Fondos Oscuros',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_dark_matrix.jpg',
+    ),
+    WallpaperItem(
+      id: 'dark_space',
+      title: 'NEBULA DARK ABYSS',
+      category: 'Fondos Oscuros',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_dark_space.jpg',
+    ),
+    WallpaperItem(
+      id: 'dark_carbon',
+      title: 'CARBON FIBER TITANIUM',
+      category: 'Fondos Oscuros',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_dark_carbon.jpg',
+    ),
+    WallpaperItem(
+      id: 'dark_samurai',
+      title: 'SHADOW RONIN DARK',
+      category: 'Fondos Oscuros',
+      type: WallpaperType.preset,
+      assetPath: 'assets/images/wallpapers/wallpaper_dark_samurai.jpg',
+    ),
     // Seccion ANIMES (Inuyasha, Miyamura, Ichigo, Aizen)
     WallpaperItem(
       id: 'inuyasha_chibi_red',

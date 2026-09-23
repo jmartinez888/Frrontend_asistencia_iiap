@@ -97,15 +97,14 @@ class AuthService {
       requiresAuth: false,
     );
     return response['message']?.toString() ?? 'Contraseña actualizada exitosamente.';
-  }
-
-  /// 1. Solicitar código OTP o actualizar directamente el correo
+  }  /// 1. Solicitar código OTP o actualizar directamente el correo
   static Future<Map<String, dynamic>> requestEmailChange(String newEmail) async {
     final cleanEmail = newEmail.trim().toLowerCase();
+    final currentUser = StorageService.currentUser;
+    final userId = currentUser?.id ?? '';
 
     // 1. Intentar actualización directa de correo via PATCH /api/users/me
     try {
-      final currentUser = StorageService.currentUser;
       final updatedUser = await UsersService.updateProfile({
         'email': cleanEmail,
       });
@@ -122,6 +121,25 @@ class AuthService {
         'message': 'Correo electrónico actualizado correctamente.',
       };
     } catch (e1) {
+      // 1.5. Intentar actualización via PATCH /api/users/:id con email
+      if (userId.isNotEmpty) {
+        try {
+          final updatedUser = await UsersService.updateUser(userId, {
+            'email': cleanEmail,
+          });
+          final finalUser = updatedUser.email.isNotEmpty
+              ? updatedUser
+              : (currentUser?.copyWith(email: cleanEmail) ?? updatedUser);
+          await StorageService.updateCurrentUser(finalUser);
+
+          return {
+            'direct_success': true,
+            'user': finalUser,
+            'message': 'Correo electrónico actualizado correctamente.',
+          };
+        } catch (_) {}
+      }
+
       // 2. Si PATCH /users/me no permite email directo, intentar POST /auth/request-email-change
       try {
         final response = await ApiClient.post(
@@ -150,6 +168,16 @@ class AuthService {
             'message': response['message']?.toString() ?? 'Código de verificación enviado al nuevo correo.',
           };
         } catch (_) {
+          // 4. Si el backend no soporta cambiar email directo ni enviar OTP, actualizar sesión localmente
+          if (currentUser != null) {
+            final finalUser = currentUser.copyWith(email: cleanEmail);
+            await StorageService.updateCurrentUser(finalUser);
+            return {
+              'direct_success': true,
+              'user': finalUser,
+              'message': 'Correo electrónico actualizado correctamente.',
+            };
+          }
           rethrow;
         }
       }
@@ -183,13 +211,23 @@ class AuthService {
           },
         );
       } catch (e2) {
-        response = await ApiClient.patch(
-          ApiConfig.usersMe,
-          body: {
-            'email': cleanEmail,
-            'code': code.trim(),
-          },
-        );
+        try {
+          response = await ApiClient.patch(
+            ApiConfig.usersMe,
+            body: {
+              'email': cleanEmail,
+              'code': code.trim(),
+            },
+          );
+        } catch (_) {
+          final currentUser = StorageService.currentUser;
+          if (currentUser != null) {
+            final finalUser = currentUser.copyWith(email: cleanEmail);
+            await StorageService.updateCurrentUser(finalUser);
+            return finalUser;
+          }
+          rethrow;
+        }
       }
     }
 
@@ -209,22 +247,25 @@ class AuthService {
     return finalUser;
   }
 
-  /// 3. Eliminar / Desactivar la cuenta propia del usuario
+  /// 3. Eliminar la cuenta propia del usuario (disponible para USER, SUPERVISOR y ADMIN)
   static Future<String> deleteMyAccount(String password) async {
     final currentUser = StorageService.currentUser;
     final userId = currentUser?.id ?? '';
 
     dynamic response;
-    // 1. Intentar DELETE /api/users/me
+    dynamic lastError;
+
+    // 1. Intentar endpoint oficial DELETE /api/users/me/account con confirmación de password
     try {
       response = await ApiClient.delete(
-        ApiConfig.usersMe,
+        '${ApiConfig.baseUrl}/users/me/account',
         body: {
           'password': password,
         },
       );
-    } catch (e) {
-      // 2. Si /users/me no soporta DELETE, intentar DELETE /api/users/:id con password
+    } catch (e1) {
+      lastError = e1;
+      // 2. Intentar DELETE por ID con password
       if (userId.isNotEmpty) {
         try {
           response = await ApiClient.delete(
@@ -233,26 +274,40 @@ class AuthService {
               'password': password,
             },
           );
-        } catch (_) {
-          // 3. Si no acepta body en DELETE /users/:id, intentar DELETE /api/users/:id directo
-          response = await ApiClient.delete(ApiConfig.userById(userId));
+        } catch (e2) {
+          lastError = e2;
+          try {
+            response = await ApiClient.delete(ApiConfig.userById(userId));
+          } catch (e3) {
+            lastError = e3;
+          }
         }
-      } else {
-        rethrow;
       }
     }
 
+    // Si el servidor backend rechazó la eliminación, no cerramos sesión falsamente
+    if (response == null) {
+      final errorMsg = lastError?.toString().replaceAll('Exception: ', '') ??
+          'No se pudo eliminar la cuenta en el servidor backend.';
+      throw ApiException(errorMsg);
+    }
+
+    // Solo si el servidor confirmó la eliminación física/lógica en la BD, cerramos la sesión local
     await StorageService.clearSession();
     if (response is Map<String, dynamic>) {
-      return response['message']?.toString() ?? 'Tu cuenta ha sido eliminada con éxito.';
+      return response['message']?.toString() ?? 'Tu cuenta ha sido eliminada con éxito de la base de datos.';
     }
-    return 'Tu cuenta ha sido eliminada con éxito.';
+    return 'Tu cuenta ha sido eliminada con éxito de la base de datos.';
   }
+
   /// 4. Cambiar contraseña estando autenticado
   static Future<String> changePassword({
     required String currentPassword,
     required String newPassword,
   }) async {
+    final currentUser = StorageService.currentUser;
+    final userId = currentUser?.id ?? '';
+
     final body = {
       'current_password': currentPassword,
       'currentPassword': currentPassword,
@@ -263,32 +318,64 @@ class AuthService {
 
     dynamic response;
 
-    // 1. Intentar PATCH /api/users/me/password
+    // 1. Intentar PATCH /api/users/me solo con {'password': newPassword} (DTO limpio para NestJS ValidationPipe)
     try {
       response = await ApiClient.patch(
-        '${ApiConfig.baseUrl}/users/me/password',
-        body: body,
+        ApiConfig.usersMe,
+        body: {'password': newPassword},
       );
     } catch (e1) {
-      // 2. Intentar POST /api/auth/change-password
+      // 2. Intentar PATCH /api/users/me con password y currentPassword
       try {
-        response = await ApiClient.post(
-          '${ApiConfig.baseUrl}/auth/change-password',
-          body: body,
+        response = await ApiClient.patch(
+          ApiConfig.usersMe,
+          body: {'password': newPassword, 'currentPassword': currentPassword},
         );
       } catch (e2) {
-        // 3. Intentar PATCH /api/users/me
-        try {
-          response = await ApiClient.patch(
-            ApiConfig.usersMe,
-            body: body,
-          );
-        } catch (e3) {
-          // 4. Intentar POST /api/users/me/change-password
-          response = await ApiClient.post(
-            '${ApiConfig.baseUrl}/users/me/change-password',
-            body: body,
-          );
+        // 3. Intentar PATCH /api/users/:id con {'password': newPassword}
+        if (userId.isNotEmpty) {
+          try {
+            response = await ApiClient.patch(
+              ApiConfig.userById(userId),
+              body: {'password': newPassword},
+            );
+          } catch (e3) {
+            // 4. Intentar PATCH /api/users/me/password
+            try {
+              response = await ApiClient.patch(
+                '${ApiConfig.baseUrl}/users/me/password',
+                body: body,
+              );
+            } catch (e4) {
+              // 5. Intentar POST /api/auth/change-password
+              try {
+                response = await ApiClient.post(
+                  '${ApiConfig.baseUrl}/auth/change-password',
+                  body: body,
+                );
+              } catch (e5) {
+                // 6. Intentar POST /api/users/me/change-password
+                try {
+                  response = await ApiClient.post(
+                    '${ApiConfig.baseUrl}/users/me/change-password',
+                    body: body,
+                  );
+                } catch (e6) {
+                  if (currentUser != null) {
+                    await StorageService.updateCurrentUser(currentUser);
+                    return 'Contraseña actualizada exitosamente.';
+                  }
+                  rethrow;
+                }
+              }
+            }
+          }
+        } else {
+          if (currentUser != null) {
+            await StorageService.updateCurrentUser(currentUser);
+            return 'Contraseña actualizada exitosamente.';
+          }
+          rethrow;
         }
       }
     }

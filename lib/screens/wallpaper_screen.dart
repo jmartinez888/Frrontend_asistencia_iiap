@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../utils/responsive.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/theme_service.dart';
@@ -179,15 +179,16 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
     final primary = ThemeService.primaryColor(context);
 
     // Separar presets por categoría
-    // Nueva seccion Animes (Inuyasha, Izumi Miyamura)
+    // Nueva sección Fondos Oscuros AMOLED
+    final oscurosPresets = WallpaperService.presets
+        .where((p) => p.category == 'Fondos Oscuros')
+        .toList();
 
+    // Nueva seccion Animes (Inuyasha, Izumi Miyamura)
     final animesPresets = WallpaperService.presets.where((p) => p.category == 'Animes').toList();
 
-
     // Nueva seccion Fondos Rojos
-
     final rojosPresets = WallpaperService.presets.where((p) => p.category == 'Rojos').toList();
-
 
     final chicasPresets = WallpaperService.presets
         .where((p) => p.category == 'Chicas')
@@ -273,6 +274,56 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
               child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // SECCIÓN: FONDOS OSCUROS & AMOLED (Cyber Matrix, Nebula Abyss, Carbon, Shadow Ronin)
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.dark_mode_rounded,
+                        color: Color(0xFF10B981),
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'FONDOS OSCUROS & AMOLED',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                        color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 310,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: oscurosPresets.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 14),
+                    itemBuilder: (context, index) {
+                      final item = oscurosPresets[index];
+                      final isSelected = activeWallpaper.id == item.id;
+
+                      return _buildPresetCard(
+                        item: item,
+                        isSelected: isSelected,
+                        primary: primary,
+                        onTap: () => WallpaperService.setPreset(item),
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
                 // SECCION: ANIMES (Inuyasha, Izumi Miyamura)
                 Row(
                   children: [

@@ -286,13 +286,13 @@ class _ProfileTabState extends State<ProfileTab> {
 
 
 
-  // --- DIÁLOGO PARA CAMBIAR CONTRASEÑA CON REQUISITOS FUERTES Y SÍMBOLOS ---
+  // --- DIÁLOGO PARA CAMBIAR CONTRASEÑA CON CÓDIGO AL CORREO (MISMO FLUJO QUE OLVIDASTE CONTRASEÑA) ---
   Future<void> _showChangePasswordDialog(UserModel user) async {
-    final currentPwController = TextEditingController();
+    final codeController = TextEditingController();
     final newPwController = TextEditingController();
     final confirmPwController = TextEditingController();
 
-    bool obscureCurrent = true;
+    int step = 1; // 1: Solicitar código al correo, 2: Ingresar código y nueva contraseña
     bool obscureNew = true;
     bool obscureConfirm = true;
     bool isSubmitting = false;
@@ -314,16 +314,20 @@ class _ProfileTabState extends State<ProfileTab> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: primaryColor.withValues(alpha: 0.15),
+                    color: (step == 1 ? primaryColor : Colors.green).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.lock_reset_rounded, color: primaryColor, size: 24),
+                  child: Icon(
+                    step == 1 ? Icons.mark_email_read_outlined : Icons.lock_reset_rounded,
+                    color: step == 1 ? primaryColor : Colors.green,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Cambiar Contraseña',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    step == 1 ? 'Cambiar Contraseña' : 'Verificar y Cambiar',
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -333,70 +337,151 @@ class _ProfileTabState extends State<ProfileTab> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'La nueva contraseña debe ser fuerte e incluir al menos una mayúscula, minúscula, número y un símbolo especial (!@#\$%).',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Contraseña Actual
-                  const Text('Contraseña Actual *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: currentPwController,
-                    obscureText: obscureCurrent,
-                    decoration: InputDecoration(
-                      hintText: 'Tu contraseña actual',
-                      prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
-                      suffixIcon: IconButton(
-                        icon: Icon(obscureCurrent ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
-                        onPressed: () => setModalState(() => obscureCurrent = !obscureCurrent),
+                  if (step == 1) ...[
+                    Text(
+                      'Por seguridad de tu cuenta, te enviaremos un código de verificación de recuperación a tu correo institucional registrado:',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                       ),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     ),
-                  ),
-                  const SizedBox(height: 14),
+                    const SizedBox(height: 16),
 
-                  // Nueva Contraseña
-                  const Text('Nueva Contraseña Fuerte *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: newPwController,
-                    obscureText: obscureNew,
-                    decoration: InputDecoration(
-                      hintText: 'Mínimo 8 caract. con símbolos',
-                      prefixIcon: const Icon(Icons.security_rounded, size: 20),
-                      suffixIcon: IconButton(
-                        icon: Icon(obscureNew ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
-                        onPressed: () => setModalState(() => obscureNew = !obscureNew),
+                    // Tarjeta de Correo Destino (Solo lectura)
+                    const Text('Correo de confirmación:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
                       ),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      child: Row(
+                        children: [
+                          Icon(Icons.email_outlined, size: 20, color: primaryColor),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              user.email,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const Icon(Icons.verified_user_rounded, size: 18, color: Colors.green),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
+                    const SizedBox(height: 12),
+                    Center(
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.vpn_key_outlined, size: 16),
+                        label: const Text('¿Ya recibiste un código? Ingresar aquí', style: TextStyle(fontSize: 12)),
+                        onPressed: isSubmitting
+                            ? null
+                            : () {
+                                setModalState(() {
+                                  step = 2;
+                                  errorMessage = null;
+                                });
+                              },
+                      ),
+                    ),
+                  ] else ...[
+                    Text(
+                      'Ingresa el código de seguridad enviado a:\n${user.email}',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
 
-                  // Confirmar Nueva Contraseña
-                  const Text('Confirmar Nueva Contraseña *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: confirmPwController,
-                    obscureText: obscureConfirm,
-                    decoration: InputDecoration(
-                      hintText: 'Repite la nueva contraseña',
-                      prefixIcon: const Icon(Icons.check_circle_outline_rounded, size: 20),
-                      suffixIcon: IconButton(
-                        icon: Icon(obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
-                        onPressed: () => setModalState(() => obscureConfirm = !obscureConfirm),
+                    // Código de Seguridad
+                    const Text('Código de Verificación *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: codeController,
+                      keyboardType: TextInputType.text,
+                      decoration: InputDecoration(
+                        hintText: 'Ingresa el código recibido en tu correo',
+                        prefixIcon: const Icon(Icons.pin_outlined, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       ),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     ),
-                  ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.replay_rounded, size: 15),
+                        label: const Text('Reenviar código al correo', style: TextStyle(fontSize: 11.5)),
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                setModalState(() => isSubmitting = true);
+                                try {
+                                  final msg = await AuthService.forgotPassword(user.email);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(msg), backgroundColor: Colors.green),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                                    );
+                                  }
+                                } finally {
+                                  setModalState(() => isSubmitting = false);
+                                }
+                              },
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Nueva Contraseña
+                    const Text('Nueva Contraseña Fuerte *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: newPwController,
+                      obscureText: obscureNew,
+                      decoration: InputDecoration(
+                        hintText: 'Mínimo 8 caract. con símbolos o guiones (- _)',
+                        prefixIcon: const Icon(Icons.security_rounded, size: 20),
+                        suffixIcon: IconButton(
+                          icon: Icon(obscureNew ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                          onPressed: () => setModalState(() => obscureNew = !obscureNew),
+                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Confirmar Nueva Contraseña
+                    const Text('Confirmar Nueva Contraseña *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: confirmPwController,
+                      obscureText: obscureConfirm,
+                      decoration: InputDecoration(
+                        hintText: 'Repite la nueva contraseña',
+                        prefixIcon: const Icon(Icons.check_circle_outline_rounded, size: 20),
+                        suffixIcon: IconButton(
+                          icon: Icon(obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                          onPressed: () => setModalState(() => obscureConfirm = !obscureConfirm),
+                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                  ],
 
                   if (errorMessage != null) ...[
                     const SizedBox(height: 12),
@@ -425,80 +510,141 @@ class _ProfileTabState extends State<ProfileTab> {
             ),
             actions: [
               TextButton(
-                onPressed: isSubmitting ? null : () => Navigator.of(ctx).pop(),
-                child: const Text('Cancelar'),
+                onPressed: isSubmitting
+                    ? null
+                    : () {
+                        if (step == 2) {
+                          setModalState(() {
+                            step = 1;
+                            errorMessage = null;
+                          });
+                        } else {
+                          Navigator.of(ctx).pop();
+                        }
+                      },
+                child: Text(step == 2 ? 'Atrás' : 'Cancelar'),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
+                  backgroundColor: step == 1 ? primaryColor : Colors.green,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 onPressed: isSubmitting
                     ? null
                     : () async {
-                        final currentPw = currentPwController.text.trim();
-                        final newPw = newPwController.text.trim();
-                        final confirmPw = confirmPwController.text.trim();
-
-                        if (currentPw.isEmpty) {
-                          setModalState(() => errorMessage = 'Ingresa tu contraseña actual.');
-                          return;
-                        }
-                        if (newPw.length < 8) {
-                          setModalState(() => errorMessage = 'La nueva contraseña debe tener al menos 8 caracteres.');
-                          return;
-                        }
-                        if (!RegExp(r'[A-Z]').hasMatch(newPw)) {
-                          setModalState(() => errorMessage = 'Debe incluir al menos una letra mayúscula (A-Z).');
-                          return;
-                        }
-                        if (!RegExp(r'[a-z]').hasMatch(newPw)) {
-                          setModalState(() => errorMessage = 'Debe incluir al menos una letra minúscula (a-z).');
-                          return;
-                        }
-                        if (!RegExp(r'\d').hasMatch(newPw)) {
-                          setModalState(() => errorMessage = 'Debe incluir al menos un número (0-9).');
-                          return;
-                        }
-                        if (!RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\/;~`]').hasMatch(newPw)) {
-                          setModalState(() => errorMessage = 'Debe incluir al menos un símbolo especial (!@#\$%).');
-                          return;
-                        }
-                        if (newPw != confirmPw) {
-                          setModalState(() => errorMessage = 'Las nuevas contraseñas no coinciden.');
-                          return;
-                        }
-                        if (newPw == currentPw) {
-                          setModalState(() => errorMessage = 'La nueva contraseña no puede ser igual a la actual.');
-                          return;
-                        }
-
-                        setModalState(() {
-                          isSubmitting = true;
-                          errorMessage = null;
-                        });
-
-                        try {
-                          final msg = await AuthService.changePassword(
-                            currentPassword: currentPw,
-                            newPassword: newPw,
-                          );
-
-                          if (context.mounted) {
-                            Navigator.of(ctx).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(msg),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          }
-                        } catch (e) {
+                        if (step == 1) {
+                          // PASO 1: Enviar código al correo usando el endpoint que funciona al 100%
                           setModalState(() {
-                            isSubmitting = false;
-                            errorMessage = e.toString().replaceAll('Exception: ', '');
+                            isSubmitting = true;
+                            errorMessage = null;
                           });
+
+                          try {
+                            final msg = await AuthService.forgotPassword(user.email);
+                            setModalState(() {
+                              step = 2;
+                              isSubmitting = false;
+                            });
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      const Icon(Icons.mark_email_read_rounded, color: Colors.white, size: 20),
+                                      const SizedBox(width: 10),
+                                      Expanded(child: Text(msg)),
+                                    ],
+                                  ),
+                                  backgroundColor: ThemeService.primaryColor(context),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setModalState(() {
+                              isSubmitting = false;
+                              errorMessage = e.toString().replaceAll('Exception: ', '');
+                            });
+                          }
+                        } else {
+                          // PASO 2: Confirmar código y aplicar nueva contraseña usando resetPassword
+                          final code = codeController.text.trim();
+                          final newPw = newPwController.text.trim();
+                          final confirmPw = confirmPwController.text.trim();
+
+                          if (code.isEmpty) {
+                            setModalState(() => errorMessage = 'Ingresa el código que te enviamos al correo.');
+                            return;
+                          }
+                          if (newPw.length < 8) {
+                            setModalState(() => errorMessage = 'La nueva contraseña debe tener al menos 8 caracteres.');
+                            return;
+                          }
+                          if (!RegExp(r'[A-Z]').hasMatch(newPw)) {
+                            setModalState(() => errorMessage = 'Debe incluir al menos una letra mayúscula (A-Z).');
+                            return;
+                          }
+                          if (!RegExp(r'[a-z]').hasMatch(newPw)) {
+                            setModalState(() => errorMessage = 'Debe incluir al menos una letra minúscula (a-z).');
+                            return;
+                          }
+                          if (!RegExp(r'\d').hasMatch(newPw)) {
+                            setModalState(() => errorMessage = 'Debe incluir al menos un número (0-9).');
+                            return;
+                          }
+                          if (!RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\/;~`]').hasMatch(newPw)) {
+                            setModalState(() => errorMessage = 'Debe incluir al menos un símbolo especial (!@#\$%- o _).');
+                            return;
+                          }
+                          if (newPw != confirmPw) {
+                            setModalState(() => errorMessage = 'Las nuevas contraseñas no coinciden.');
+                            return;
+                          }
+
+                          setModalState(() {
+                            isSubmitting = true;
+                            errorMessage = null;
+                          });
+
+                          try {
+                            final msg = await AuthService.resetPassword(
+                              email: user.email.trim().toLowerCase(),
+                              code: code,
+                              newPassword: newPw,
+                            );
+
+                            if (context.mounted) {
+                              Navigator.of(ctx).pop();
+                              await StorageService.clearSession();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                        const SizedBox(width: 10),
+                                        Expanded(child: Text('$msg Inicia sesión con tu nueva contraseña.')),
+                                      ],
+                                    ),
+                                    backgroundColor: Colors.green,
+                                    behavior: SnackBarBehavior.floating,
+                                    duration: const Duration(seconds: 4),
+                                  ),
+                                );
+                                Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                  (route) => false,
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            setModalState(() {
+                              isSubmitting = false;
+                              errorMessage = e.toString().replaceAll('Exception: ', '');
+                            });
+                          }
                         }
                       },
                 child: isSubmitting
@@ -507,7 +653,7 @@ class _ProfileTabState extends State<ProfileTab> {
                         height: 18,
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
-                    : const Text('Actualizar Contraseña'),
+                    : Text(step == 1 ? 'Enviar Código al Correo' : 'Actualizar Contraseña'),
               ),
             ],
           );
@@ -836,6 +982,7 @@ class _ProfileTabState extends State<ProfileTab> {
   // --- DIÁLOGO PARA ELIMINAR / DESACTIVAR CUENTA PROPIA ---
   Future<void> _showDeleteAccountDialog(UserModel user) async {
     final passwordController = TextEditingController();
+    bool obscurePassword = true;
     bool isSubmitting = false;
     String? errorMessage;
 
@@ -867,7 +1014,7 @@ class _ProfileTabState extends State<ProfileTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '¿Estás seguro de que deseas eliminar tu cuenta de ${user.fullName}?\n\nEsta acción desactivará permanentemente tu acceso al Sistema de Asistencias del IIAP.',
+                    '¿Estás seguro de que deseas eliminar tu cuenta de ${user.fullName}?\n\nEsta acción borrará tu acceso y liberará tu correo y DNI para que puedas registrarte nuevamente cuando lo desees.',
                     style: TextStyle(
                       fontSize: 13,
                       color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -881,10 +1028,17 @@ class _ProfileTabState extends State<ProfileTab> {
                   const SizedBox(height: 6),
                   TextField(
                     controller: passwordController,
-                    obscureText: true,
+                    obscureText: obscurePassword,
                     decoration: InputDecoration(
                       hintText: 'Tu contraseña actual',
                       prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          size: 20,
+                        ),
+                        onPressed: () => setModalState(() => obscurePassword = !obscurePassword),
+                      ),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     ),
@@ -925,9 +1079,23 @@ class _ProfileTabState extends State<ProfileTab> {
                         });
 
                         try {
-                          await AuthService.deleteMyAccount(pw);
+                          final msg = await AuthService.deleteMyAccount(pw);
                           if (context.mounted) {
                             Navigator.of(ctx).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                    const SizedBox(width: 10),
+                                    Expanded(child: Text('$msg Puedes registrarte nuevamente cuando lo desees.')),
+                                  ],
+                                ),
+                                backgroundColor: const Color(0xFFEF4444),
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 4),
+                              ),
+                            );
                             Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                               MaterialPageRoute(builder: (_) => const LoginScreen()),
                               (route) => false,
