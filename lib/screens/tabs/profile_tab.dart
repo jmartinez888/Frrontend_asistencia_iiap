@@ -10,6 +10,7 @@ import '../../services/theme_service.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/api_client.dart';
 import '../../widgets/opera_gx_theme_picker.dart';
+import '../../widgets/photo_viewer_dialog.dart';
 import '../wallpaper_screen.dart';
 import '../login_screen.dart';
 
@@ -23,6 +24,94 @@ class ProfileTab extends StatefulWidget {
 class _ProfileTabState extends State<ProfileTab> {
   final ImagePicker _picker = ImagePicker();
   bool _isUploadingPhoto = false;
+
+  bool _isEditingInstitutionalInfo = false;
+  late final TextEditingController _officeController;
+  late final TextEditingController _areaController;
+  bool _isSavingInstitutionalInfo = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = StorageService.currentUser;
+    _officeController = TextEditingController(text: user?.office ?? '');
+    _areaController = TextEditingController(text: user?.area ?? '');
+  }
+
+  @override
+  void dispose() {
+    _officeController.dispose();
+    _areaController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveInstitutionalInfo(UserModel user) async {
+    setState(() => _isSavingInstitutionalInfo = true);
+    final newOffice = _officeController.text.trim();
+    final newArea = _areaController.text.trim();
+
+    try {
+      final updatedUser = user.copyWith(
+        position: newOffice.isEmpty ? null : newOffice,
+        department: newArea.isEmpty ? null : newArea,
+      );
+
+      // 1. Guardar y refrescar de inmediato en el almacenamiento y sesión local
+      await StorageService.updateCurrentUser(updatedUser);
+
+      // 2. Sincronizar en segundo plano con el backend
+      try {
+        await UsersService.updateProfile({
+          'position': newOffice,
+          'department': newArea,
+        });
+      } catch (_) {}
+
+      if (!mounted) return;
+      setState(() {
+        _isEditingInstitutionalInfo = false;
+        _isSavingInstitutionalInfo = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Text('Oficina y Área guardadas correctamente.'),
+            ],
+          ),
+          backgroundColor: ThemeService.primaryColor(context),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSavingInstitutionalInfo = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al guardar: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _openPhotoViewer(UserModel user) {
+    if (user.photoUrl != null && user.photoUrl!.isNotEmpty) {
+      PhotoViewerDialog.show(
+        context,
+        photoUrl: user.photoUrl!,
+        userName: user.fullName,
+        subtitle: user.role.displayName,
+      );
+    } else {
+      _showPhotoOptions();
+    }
+  }
 
   Future<void> _pickAndUploadPhoto(ImageSource source) async {
     try {
@@ -653,8 +742,9 @@ class _ProfileTabState extends State<ProfileTab> {
                             setModalState(() => currentError = 'Ingresa el nuevo correo electrónico.');
                             return;
                           }
-                          if (!newEmail.contains('@') || !newEmail.endsWith('.com')) {
-                            setModalState(() => currentError = 'El correo debe ser válido y terminar en .com');
+                          final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                          if (!emailRegex.hasMatch(newEmail)) {
+                            setModalState(() => currentError = 'Ingresa un correo electrónico válido.');
                             return;
                           }
                           if (newEmail == user.email.toLowerCase()) {
@@ -668,11 +758,24 @@ class _ProfileTabState extends State<ProfileTab> {
                           });
 
                           try {
-                            await AuthService.requestEmailChange(newEmail);
-                            setModalState(() {
-                              step = 2;
-                              isSubmitting = false;
-                            });
+                            final res = await AuthService.requestEmailChange(newEmail);
+                            if (res['direct_success'] == true) {
+                              if (context.mounted) {
+                                Navigator.of(ctx).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('¡Correo actualizado con éxito a $newEmail!'),
+                                    backgroundColor: ThemeService.primaryColor(context),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            } else {
+                              setModalState(() {
+                                step = 2;
+                                isSubmitting = false;
+                              });
+                            }
                           } catch (e) {
                             setModalState(() {
                               isSubmitting = false;
@@ -903,39 +1006,36 @@ class _ProfileTabState extends State<ProfileTab> {
               maxTabletWidth: 780,
               child: Column(
               children: [
-                const SizedBox(height: 12),
-                Center(
-                  child: Text(
-                    'Mi Perfil Institucional',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 18),
 
                 // Avatar con Botón de Cámara (Cámara / Galería)
                 Center(
                   child: Stack(
                     children: [
-                      CircleAvatar(
-                        radius: Responsive.isTablet(context) ? 72 : 54,
-                        backgroundColor: isDark ? ThemeService.cardBorder(context) : const Color(0xFFE2E8F0),
-                        backgroundImage: user.photoUrl != null && user.photoUrl!.isNotEmpty
-                            ? NetworkImage(user.photoUrl!)
-                            : null,
-                        child: user.photoUrl == null || user.photoUrl!.isEmpty
-                            ? Text(
-                                user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
-                                style: TextStyle(
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : ThemeService.primaryColor(context),
-                                ),
-                              )
-                            : null,
+                      GestureDetector(
+                        onTap: () => _openPhotoViewer(user),
+                        child: Hero(
+                          tag: user.photoUrl != null && user.photoUrl!.isNotEmpty
+                              ? 'profile_photo_${user.photoUrl}'
+                              : 'profile_avatar_placeholder',
+                          child: CircleAvatar(
+                            radius: Responsive.isTablet(context) ? 72 : 54,
+                            backgroundColor: isDark ? ThemeService.cardBorder(context) : const Color(0xFFE2E8F0),
+                            backgroundImage: user.photoUrl != null && user.photoUrl!.isNotEmpty
+                                ? NetworkImage(user.photoUrl!)
+                                : null,
+                            child: user.photoUrl == null || user.photoUrl!.isEmpty
+                                ? Text(
+                                    user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
+                                    style: TextStyle(
+                                      fontSize: 40,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? Colors.white : ThemeService.primaryColor(context),
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        ),
                       ),
                       Positioned(
                         bottom: 0,
@@ -1009,17 +1109,8 @@ class _ProfileTabState extends State<ProfileTab> {
 
                 const SizedBox(height: 24),
 
-                // Tarjeta de Datos Laborales
-                _buildInfoCard(
-                  context,
-                  title: 'Información Institucional',
-                  items: [
-                    _InfoRow(icon: Icons.work_outline_rounded, label: 'Cargo', value: user.position ?? 'Sin cargo asignado'),
-                    _InfoRow(icon: Icons.account_tree_outlined, label: 'Área / Depto', value: user.department ?? 'IIAP Central'),
-                    _InfoRow(icon: Icons.badge_outlined, label: 'DNI / Doc', value: user.documentNumber ?? 'No registrado'),
-                    _InfoRow(icon: Icons.phone_outlined, label: 'Teléfono', value: user.phoneNumber ?? 'No registrado'),
-                  ],
-                ),
+                // Tarjeta de Información Institucional (Oficina, Área, DNI, Teléfono)
+                _buildInstitutionalInfoCard(context, user),
 
                 const SizedBox(height: 16),
 
@@ -1321,8 +1412,9 @@ class _ProfileTabState extends State<ProfileTab> {
     );
   }
 
-  Widget _buildInfoCard(BuildContext context, {required String title, required List<_InfoRow> items}) {
+  Widget _buildInstitutionalInfoCard(BuildContext context, UserModel user) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primary = ThemeService.primaryColor(context);
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -1334,26 +1426,78 @@ class _ProfileTabState extends State<ProfileTab> {
           width: 1.2,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
+      child: AnimatedCrossFade(
+        duration: const Duration(milliseconds: 250),
+        crossFadeState: _isEditingInstitutionalInfo ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+        firstChild: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Información Institucional',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+                InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () {
+                    setState(() {
+                      _officeController.text = user.office;
+                      _areaController.text = user.area;
+                      _isEditingInstitutionalInfo = true;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: primary.withValues(alpha: 0.25)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.edit_rounded, size: 13, color: primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Editar',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 16),
-          ...items.map((it) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+            const SizedBox(height: 16),
+
+            // Fila Oficina (Editable al tocar)
+            InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () {
+                setState(() {
+                  _officeController.text = user.office;
+                  _areaController.text = user.area;
+                  _isEditingInstitutionalInfo = true;
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
-                    Icon(it.icon, size: 20, color: ThemeService.primaryColor(context)),
+                    Icon(Icons.apartment_rounded, size: 20, color: primary),
                     const SizedBox(width: 12),
                     Text(
-                      it.label,
+                      'Oficina',
                       style: TextStyle(
                         fontSize: 13,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -1361,25 +1505,233 @@ class _ProfileTabState extends State<ProfileTab> {
                     ),
                     const Spacer(),
                     Text(
-                      it.value,
+                      user.office.isNotEmpty ? user.office : 'Sin asignar',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        fontWeight: user.office.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
+                        fontStyle: user.office.isNotEmpty ? FontStyle.normal : FontStyle.italic,
+                        color: user.office.isNotEmpty
+                            ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                            : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
                       ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.edit_outlined,
+                      size: 14,
+                      color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
                     ),
                   ],
                 ),
-              )),
-        ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Fila Área (Editable al tocar)
+            InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () {
+                setState(() {
+                  _officeController.text = user.office;
+                  _areaController.text = user.area;
+                  _isEditingInstitutionalInfo = true;
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.grid_view_rounded, size: 20, color: primary),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Área',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      user.area.isNotEmpty ? user.area : 'Sin asignar',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: user.area.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
+                        fontStyle: user.area.isNotEmpty ? FontStyle.normal : FontStyle.italic,
+                        color: user.area.isNotEmpty
+                            ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                            : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.edit_outlined,
+                      size: 14,
+                      color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Fila DNI
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.badge_outlined, size: 20, color: primary),
+                  const SizedBox(width: 12),
+                  Text(
+                    'DNI / Doc',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    user.documentNumber?.isNotEmpty == true ? user.documentNumber! : 'No registrado',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Fila Teléfono
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.phone_outlined, size: 20, color: primary),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Teléfono',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    user.phoneNumber?.isNotEmpty == true ? user.phoneNumber! : 'No registrado',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        secondChild: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Editar Oficina y Área',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => setState(() => _isEditingInstitutionalInfo = false),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Ingresa o actualiza tu oficina y área de trabajo institucional:',
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Campo Oficina
+            TextField(
+              controller: _officeController,
+              style: TextStyle(fontSize: 13.5, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+              decoration: InputDecoration(
+                labelText: 'Oficina',
+                hintText: 'Ej. Presidencia, Sede Central, Logística...',
+                prefixIcon: Icon(Icons.apartment_rounded, size: 20, color: primary),
+                filled: true,
+                fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Campo Área
+            TextField(
+              controller: _areaController,
+              style: TextStyle(fontSize: 13.5, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+              decoration: InputDecoration(
+                labelText: 'Área',
+                hintText: 'Ej. Tecnologías de la Información, Recursos Humanos...',
+                prefixIcon: Icon(Icons.grid_view_rounded, size: 20, color: primary),
+                filled: true,
+                fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Botones Cancelar / Guardar
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => setState(() => _isEditingInstitutionalInfo = false),
+                    child: const Text('Cancelar'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: _isSavingInstitutionalInfo ? null : () => _saveInstitutionalInfo(user),
+                    icon: _isSavingInstitutionalInfo
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.check_rounded, size: 18),
+                    label: Text(_isSavingInstitutionalInfo ? 'Guardando...' : 'Guardar'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _InfoRow {
-  final IconData icon;
-  final String label;
-  final String value;
-  const _InfoRow({required this.icon, required this.label, required this.value});
-}

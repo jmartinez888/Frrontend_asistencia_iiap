@@ -3,7 +3,7 @@
 enum UserRole {
   ADMIN,
   SUPERVISOR,
-  EMPLOYEE;
+  USER;
 
   static UserRole fromString(String? role) {
     switch (role?.toUpperCase()) {
@@ -11,19 +11,21 @@ enum UserRole {
         return UserRole.ADMIN;
       case 'SUPERVISOR':
         return UserRole.SUPERVISOR;
+      case 'USER':
+      case 'EMPLOYEE':
       default:
-        return UserRole.EMPLOYEE;
+        return UserRole.USER;
     }
   }
 
   String get displayName {
     switch (this) {
       case UserRole.ADMIN:
-        return 'Administrador';
+        return 'Admin';
       case UserRole.SUPERVISOR:
         return 'Supervisor';
-      case UserRole.EMPLOYEE:
-        return 'Empleado / Personal';
+      case UserRole.USER:
+        return 'User';
     }
   }
 }
@@ -61,14 +63,42 @@ class UserModel {
   bool get isSupervisor => role == UserRole.SUPERVISOR;
   bool get canManageAttendanceQr => isAdmin || isSupervisor;
 
+  /// Oficina asignada al usuario (vacía por defecto si no ha sido configurada)
+  String get office {
+    if (position == null ||
+        position!.trim().isEmpty ||
+        position == 'Personal de la Institución' ||
+        position == 'Sin cargo asignado') {
+      return '';
+    }
+    return position!.trim();
+  }
+
+  /// Área asignada al usuario (vacía por defecto si no ha sido configurada)
+  String get area {
+    if (department == null ||
+        department!.trim().isEmpty ||
+        department == 'Área General' ||
+        department == 'IIAP Central') {
+      return '';
+    }
+    return department!.trim();
+  }
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final rawPos = json['position']?.toString();
+    final rawDept = json['department']?.toString();
+    // Por defecto vienen vacíos, omitiendo textos genéricos previos del backend
+    final cleanPos = (rawPos == 'Personal de la Institución' || rawPos == 'Sin cargo asignado') ? null : rawPos;
+    final cleanDept = (rawDept == 'Área General' || rawDept == 'IIAP Central') ? null : rawDept;
+
     return UserModel(
       id: json['id']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       fullName: json['full_name']?.toString() ?? '',
       role: UserRole.fromString(json['role']?.toString()),
-      position: json['position']?.toString(),
-      department: json['department']?.toString(),
+      position: cleanPos,
+      department: cleanDept,
       documentNumber: json['document_number']?.toString(),
       phoneNumber: json['phone_number']?.toString(),
       photoUrl: json['photo_url']?.toString(),

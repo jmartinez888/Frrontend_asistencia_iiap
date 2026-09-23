@@ -29,9 +29,14 @@ class UsersService {
   static Future<UserModel> assignRole(String id, UserRole role) async {
     final response = await ApiClient.patch(
       ApiConfig.userRole(id),
-      body: {'role': role.name},
+      body: {'role': role == UserRole.USER ? 'EMPLOYEE' : role.name},
     );
     return UserModel.fromJson(response as Map<String, dynamic>);
+  }
+
+  // Eliminar usuario de la institución (Solo ADMIN)
+  static Future<void> deleteUser(String id) async {
+    await ApiClient.delete(ApiConfig.userById(id));
   }
 
   // Actualizar datos de cualquier colaborador (ADMIN o SUPERVISOR)

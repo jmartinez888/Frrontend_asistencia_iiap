@@ -420,40 +420,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: Row(
                           children: [
                             Icon(Icons.badge_outlined, color: ThemeService.primaryColor(context), size: 20),
-                            const SizedBox(width: 10),
-                            Text(
-                              'Documento de Identidad: ',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Text(
+                                    'Tipo de Doc: ',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: ThemeService.primaryColor(context).withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      _documentType,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: ThemeService.primaryColor(context),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: ThemeService.primaryColor(context).withValues(alpha: 0.15),
+                                color: ThemeService.primaryColor(context).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text(
-                                _documentType,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: ThemeService.primaryColor(context),
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Cambiar',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: ThemeService.primaryColor(context),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: ThemeService.primaryColor(context)),
+                                ],
                               ),
                             ),
-                            const Spacer(),
-                            Text(
-                              'Cambiar',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: ThemeService.primaryColor(context),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: ThemeService.primaryColor(context)),
                           ],
                         ),
                       ),

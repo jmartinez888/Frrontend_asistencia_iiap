@@ -35,7 +35,6 @@ class AttendanceCard extends StatelessWidget {
     final schedule = ScheduleService.getSchedule(record.userId);
     final evaluation = schedule.evaluateAttendance(record.timestamp, isCheckIn);
     final isPunctual = evaluation.isPunctual;
-    final lateMinutes = evaluation.minutesLate;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -101,7 +100,7 @@ class AttendanceCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 6),
-                            _buildPunctualityBadge(isCheckIn, isPunctual, lateMinutes, isDark),
+                            _buildPunctualityBadge(isCheckIn, isPunctual, isDark),
                           ],
                         ),
                         const SizedBox(height: 4),
@@ -169,7 +168,7 @@ class AttendanceCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 6),
-                            _buildPunctualityBadge(isCheckIn, isPunctual, lateMinutes, isDark),
+                            _buildPunctualityBadge(isCheckIn, isPunctual, isDark),
                           ],
                         ),
                       ],
@@ -262,7 +261,7 @@ class AttendanceCard extends StatelessWidget {
     );
   }
 
-  Widget _buildPunctualityBadge(bool isCheckIn, bool isPunctual, int lateMinutes, bool isDark) {
+  Widget _buildPunctualityBadge(bool isCheckIn, bool isPunctual, bool isDark) {
     if (!isCheckIn) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -301,7 +300,7 @@ class AttendanceCard extends StatelessWidget {
             Icon(Icons.check_circle_rounded, size: 11, color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A)),
             const SizedBox(width: 3),
             Text(
-              'A Tiempo',
+              'A tiempo',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
@@ -324,7 +323,7 @@ class AttendanceCard extends StatelessWidget {
             Icon(Icons.error_outline_rounded, size: 11, color: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626)),
             const SizedBox(width: 3),
             Text(
-              'Tardanza (${_formatLateMinutes(lateMinutes)})',
+              'Tarde',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
@@ -339,7 +338,6 @@ class AttendanceCard extends StatelessWidget {
 
   void _showDetailModal(BuildContext context, ScheduleModel schedule, ScheduleEvaluation evaluation, bool isDark) {
     final isPunctual = evaluation.isPunctual;
-    final lateMinutes = evaluation.minutesLate;
 
     showModalBottomSheet(
       context: context,
@@ -367,11 +365,19 @@ class AttendanceCard extends StatelessWidget {
             const SizedBox(height: 16),
             Row(
               children: [
-                Icon(Icons.verified_rounded, color: isPunctual ? const Color(0xFF16A34A) : const Color(0xFFDC2626), size: 26),
+                Icon(
+                  record.type == AttendanceType.CHECK_IN
+                      ? (isPunctual ? Icons.check_circle_rounded : Icons.cancel_rounded)
+                      : Icons.verified_rounded,
+                  color: record.type == AttendanceType.CHECK_IN
+                      ? (isPunctual ? const Color(0xFF16A34A) : const Color(0xFFDC2626))
+                      : const Color(0xFF2563EB),
+                  size: 26,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Detalle de Asistencia y Horario Laboral',
+                    'Detalle de Asistencia',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -386,17 +392,16 @@ class AttendanceCard extends StatelessWidget {
             _buildDetailRow('Tipo de Marca:', record.type.label, isDark),
             _buildDetailRow('Hora Registrada:', _formatTime(record.timestamp), isDark),
             _buildDetailRow('Fecha:', _formatDate(record.timestamp), isDark),
-            _buildDetailRow('Modalidad Laboral:', schedule.type == ScheduleType.flexible ? 'Personal Dinámico' : schedule.type.categoryName, isDark),
-            _buildDetailRow('Turno Asignado:', evaluation.shiftLabel, isDark),
+            _buildDetailRow('Horario:', '08:00 AM - 05:00 PM', isDark),
+            _buildDetailRow('Tolerancia de Entrada:', 'Hasta las 08:30 AM', isDark),
             if (record.isManual)
               _buildDetailRow('Modalidad:', 'Marcación Manual de Emergencia', isDark, highlightColor: Colors.amber),
             if (record.observation != null && record.observation!.isNotEmpty)
               _buildDetailRow('Justificación / Motivo:', record.observation!, isDark),
-            _buildDetailRow('Tolerancia Asignada:', '${schedule.toleranceMinutes} minutos', isDark),
             _buildDetailRow(
               'Puntualidad:',
               record.type == AttendanceType.CHECK_IN
-                  ? (isPunctual ? 'A Tiempo' : 'Tardanza (+$lateMinutes minutos)')
+                  ? (isPunctual ? 'A tiempo' : 'Tarde')
                   : 'Salida Registrada',
               isDark,
               highlightColor: record.type == AttendanceType.CHECK_IN
@@ -445,15 +450,6 @@ class AttendanceCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-    String _formatLateMinutes(int minutes) {
-    if (minutes <= 0) return '0 m';
-    if (minutes < 60) return '+$minutes m';
-    final h = minutes ~/ 60;
-    final m = minutes % 60;
-    if (m == 0) return '+${h}h';
-    return '+${h}h ${m}m';
   }
 
   String _formatTime(DateTime dt) {

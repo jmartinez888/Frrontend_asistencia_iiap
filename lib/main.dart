@@ -1,5 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'config/api_config.dart';
 import 'services/theme_service.dart';
 import 'services/wallpaper_service.dart';
@@ -48,6 +49,16 @@ class MyApp extends StatelessWidget {
           title: 'IIAP Asistencia',
           debugShowCheckedModeBanner: false,
           themeAnimationDuration: Duration.zero,
+          locale: const Locale('es', 'ES'),
+          supportedLocales: const [
+            Locale('es', 'ES'),
+            Locale('es'),
+          ],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           themeMode: ThemeMode.dark,
           theme: ThemeData(
             brightness: Brightness.light,

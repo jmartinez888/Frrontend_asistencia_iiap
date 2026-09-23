@@ -1,12 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../utils/responsive.dart';
 import '../../models/user_model.dart';
 import '../../models/attendance_model.dart';
-import '../../models/schedule_model.dart';
 import '../../services/storage_service.dart';
 import '../../services/attendance_service.dart';
 import '../../services/auth_service.dart';
-import '../../services/schedule_service.dart';
 import '../../widgets/attendance_card.dart';
 import '../qr/qr_display_screen.dart';
 import '../qr/qr_scanner_screen.dart';
@@ -129,40 +127,15 @@ class _DashboardTabState extends State<DashboardTab> {
         return 'ADMIN';
       case UserRole.SUPERVISOR:
         return 'SUPERVISOR';
-      case UserRole.EMPLOYEE:
-        return 'PERSONAL';
+      case UserRole.USER:
+        return 'USER';
     }
   }
 
   String _getUserSubtitle(UserModel user) {
-    if (user.isAdmin) return 'Administrador General';
-    if (user.isSupervisor) return 'Supervisor de Asistencia';
-
-    // Determinar dinámicamente según las marcas de hoy del colaborador
-    final hasMorning = _todayRecords.any((r) {
-      final local = r.timestamp.toLocal();
-      return local.hour < 13 || (local.hour == 13 && local.minute <= 15);
-    });
-    final hasAfternoon = _todayRecords.any((r) {
-      final local = r.timestamp.toLocal();
-      return local.hour > 13 || (local.hour == 13 && local.minute > 15);
-    });
-
-    if (hasMorning && hasAfternoon) {
-      return 'Personal • Tiempo Completo (Mañana y Tarde)';
-    } else if (hasMorning) {
-      return 'Personal • Turno Mañana (08:00 - 13:00)';
-    } else if (hasAfternoon) {
-      return 'Personal • Turno Tarde (14:00 - 19:00)';
-    }
-
-    // Si aún no tiene marcas hoy, comprobar si tiene asignado un horario explícito personalizado
-    final schedule = ScheduleService.getSchedule(user.id, position: user.position);
-    if (schedule.type != ScheduleType.flexible && schedule.type != ScheduleType.contratado) {
-      return 'Personal • ${schedule.fullLabel}';
-    }
-
-    return 'Personal de la Institución';
+    if (user.isAdmin) return 'Admin';
+    if (user.isSupervisor) return 'Supervisor';
+    return 'User';
   }
 
   @override

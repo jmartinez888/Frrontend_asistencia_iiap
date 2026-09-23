@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../utils/responsive.dart';
 import '../../models/user_model.dart';
 import '../../models/schedule_model.dart';
@@ -77,7 +77,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                 id: r.userId,
                 email: r.userEmail ?? '',
                 fullName: r.userName ?? 'Colaborador',
-                role: UserRole.EMPLOYEE,
+                role: UserRole.USER,
               );
             }
           }
@@ -108,14 +108,37 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
     }
   }
 
-  Future<void> _confirmRevoke(String id, String name) async {
+  Future<void> _changeUserRole(UserModel targetUser, UserRole newRole) async {
+    try {
+      await UsersService.assignRole(targetUser.id, newRole);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Rol de ${targetUser.fullName} actualizado a ${newRole.displayName}.'),
+          backgroundColor: ThemeService.primaryColor(context),
+        ),
+      );
+      _loadData();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: const Color(0xFFEF4444)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cambiar rol: $e'), backgroundColor: const Color(0xFFEF4444)),
+      );
+    }
+  }
+
+  Future<void> _confirmDeleteUser(UserModel targetUser) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Revocar Cargo de Supervisor'),
+        title: const Text('Eliminar Cuenta'),
         content: Text(
-          '¿Estás seguro de que deseas revocar a $name? Volverá a ser usuario regular (Personal).',
+          '¿Estás seguro de que deseas eliminar la cuenta de ${targetUser.fullName} (${targetUser.email})?\n\nEsta acción permitirá que el usuario pueda registrarse nuevamente desde cero.',
         ),
         actions: [
           TextButton(
@@ -125,7 +148,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Sí, Revocar', style: TextStyle(color: Colors.white)),
+            child: const Text('Sí, Eliminar Cuenta', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -133,12 +156,12 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
 
     if (confirmed == true) {
       try {
-        final res = await UsersService.revokeSupervisor(id);
+        await UsersService.deleteUser(targetUser.id);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(res['message']?.toString() ?? 'Supervisor revocado exitosamente.'),
-            backgroundColor: ThemeService.primaryColor(context),
+            content: Text('Cuenta de ${targetUser.fullName} eliminada exitosamente.'),
+            backgroundColor: Colors.green,
           ),
         );
         _loadData();
@@ -147,8 +170,283 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message), backgroundColor: const Color(0xFFEF4444)),
         );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al eliminar cuenta: $e'), backgroundColor: const Color(0xFFEF4444)),
+        );
       }
     }
+  }
+
+  Widget _buildAdminUserActions(UserModel u) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert_rounded, size: 20, color: Color(0xFF64748B)),
+      tooltip: 'Opciones de Administrador',
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (value) {
+        switch (value) {
+          case 'set_admin':
+            _changeUserRole(u, UserRole.ADMIN);
+            break;
+          case 'set_supervisor':
+            _changeUserRole(u, UserRole.SUPERVISOR);
+            break;
+          case 'set_user':
+            _changeUserRole(u, UserRole.USER);
+            break;
+          case 'edit_office_area':
+            _showEditUserOfficeAreaDialog(u);
+            break;
+          case 'delete_user':
+            _confirmDeleteUser(u);
+            break;
+        }
+      },
+      itemBuilder: (ctx) => [
+        const PopupMenuItem<String>(
+          value: 'edit_office_area',
+          child: Row(
+            children: [
+              Icon(Icons.edit_note_rounded, size: 18, color: Color(0xFF2D5E2A)),
+              SizedBox(width: 8),
+              Text('Editar Oficina y Área', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        if (u.role != UserRole.ADMIN)
+          const PopupMenuItem<String>(
+            value: 'set_admin',
+            child: Row(
+              children: [
+                Icon(Icons.admin_panel_settings_rounded, size: 18, color: Color(0xFF2D5E2A)),
+                SizedBox(width: 8),
+                Text('Asignar Administrador', style: TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
+        if (u.role != UserRole.SUPERVISOR)
+          const PopupMenuItem<String>(
+            value: 'set_supervisor',
+            child: Row(
+              children: [
+                Icon(Icons.verified_user_rounded, size: 18, color: Color(0xFF2563EB)),
+                SizedBox(width: 8),
+                Text('Asignar Supervisor', style: TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
+        if (u.role != UserRole.USER)
+          const PopupMenuItem<String>(
+            value: 'set_user',
+            child: Row(
+              children: [
+                Icon(Icons.person_outline_rounded, size: 18, color: Color(0xFF64748B)),
+                SizedBox(width: 8),
+                Text('Cambiar a Rol User', style: TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
+        const PopupMenuDivider(),
+        const PopupMenuItem<String>(
+          value: 'delete_user',
+          child: Row(
+            children: [
+              Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFEF4444)),
+              SizedBox(width: 8),
+              Text('Eliminar Cuenta', style: TextStyle(fontSize: 13, color: Color(0xFFEF4444))),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showEditUserOfficeAreaDialog(UserModel targetUser) {
+    final officeCtrl = TextEditingController(text: targetUser.office);
+    final areaCtrl = TextEditingController(text: targetUser.area);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.apartment_rounded, color: Color(0xFF2D5E2A)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Oficina y Área: ${targetUser.fullName}',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Actualiza la oficina y área asignada a este colaborador:',
+              style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: officeCtrl,
+              decoration: InputDecoration(
+                labelText: 'Oficina',
+                hintText: 'Ej. Presidencia, Sede Central...',
+                prefixIcon: const Icon(Icons.apartment_rounded, size: 20),
+                filled: true,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: areaCtrl,
+              decoration: InputDecoration(
+                labelText: 'Área',
+                hintText: 'Ej. Tecnologías, Recursos Humanos...',
+                prefixIcon: const Icon(Icons.grid_view_rounded, size: 20),
+                filled: true,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2D5E2A),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              final newOffice = officeCtrl.text.trim();
+              final newArea = areaCtrl.text.trim();
+              Navigator.of(ctx).pop();
+
+              try {
+                await UsersService.updateUser(targetUser.id, {
+                  'position': newOffice,
+                  'department': newArea,
+                });
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Oficina y Área actualizadas para ${targetUser.fullName}.'),
+                    backgroundColor: const Color(0xFF2D5E2A),
+                  ),
+                );
+                _loadData();
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error al actualizar: $e'),
+                    backgroundColor: const Color(0xFFEF4444),
+                  ),
+                );
+              }
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDirectDeleteDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.person_remove_rounded, color: Color(0xFFEF4444)),
+            SizedBox(width: 8),
+            Text('Eliminar por Correo o ID', style: TextStyle(fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Ingresa el nombre, correo o ID de la cuenta que deseas eliminar (ej: Jhon):',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                hintText: 'ej. Jhon o jhon@iiap.gob.pe',
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                filled: true,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              final query = controller.text.trim();
+              if (query.isEmpty) return;
+              Navigator.of(ctx).pop();
+
+              final match = _allUsers.cast<UserModel?>().firstWhere(
+                (u) =>
+                    u != null &&
+                    (u.email.toLowerCase() == query.toLowerCase() ||
+                        u.id == query ||
+                        u.fullName.toLowerCase().contains(query.toLowerCase())),
+                orElse: () => null,
+              );
+
+              if (match != null) {
+                _confirmDeleteUser(match);
+              } else {
+                try {
+                  await UsersService.deleteUser(query);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Cuenta $query eliminada exitosamente.'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  _loadData();
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('No se encontró cuenta para "$query".'),
+                      backgroundColor: const Color(0xFFEF4444),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Buscar y Eliminar'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _openScheduleDialog(UserModel user) {
@@ -282,62 +580,17 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
 
                   // Lista de opciones preestablecidas
                   _buildPresetTile(
-                    title: 'Turno Dinámico / Flexible',
-                    subtitle: 'Se determina automáticamente por su asistencia diaria (Mañana, Tarde o Completo)',
-                    type: ScheduleType.flexible,
-                    isSelected: selectedType == ScheduleType.flexible,
+                    title: 'Horario Institucional Regular',
+                    subtitle: 'Entrada 08:00 AM (Tolerancia hasta 08:30 AM) • Salida 05:00 PM',
+                    type: ScheduleType.institucional,
+                    isSelected: selectedType == ScheduleType.institucional,
                     isDark: isDark,
-                    onTap: () => updatePreset(ScheduleType.flexible),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildPresetTile(
-                    title: 'Contratado / Permanente',
-                    subtitle: 'Turno Completo • 08:00 AM a 05:00 PM',
-                    type: ScheduleType.contratado,
-                    isSelected: selectedType == ScheduleType.contratado || selectedType == ScheduleType.permanente,
-                    isDark: isDark,
-                    onTap: () => updatePreset(ScheduleType.contratado),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildPresetTile(
-                    title: 'Voluntario (Turno Mañana)',
-                    subtitle: '08:00 AM a 01:00 PM',
-                    type: ScheduleType.voluntarioManana,
-                    isSelected: selectedType == ScheduleType.voluntarioManana,
-                    isDark: isDark,
-                    onTap: () => updatePreset(ScheduleType.voluntarioManana),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildPresetTile(
-                    title: 'Voluntario (Turno Tarde)',
-                    subtitle: '02:00 PM a 07:00 PM',
-                    type: ScheduleType.voluntarioTarde,
-                    isSelected: selectedType == ScheduleType.voluntarioTarde,
-                    isDark: isDark,
-                    onTap: () => updatePreset(ScheduleType.voluntarioTarde),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildPresetTile(
-                    title: 'Practicante (Turno Mañana)',
-                    subtitle: '08:00 AM a 01:00 PM',
-                    type: ScheduleType.practicanteManana,
-                    isSelected: selectedType == ScheduleType.practicanteManana,
-                    isDark: isDark,
-                    onTap: () => updatePreset(ScheduleType.practicanteManana),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildPresetTile(
-                    title: 'Practicante (Turno Tarde)',
-                    subtitle: '02:00 PM a 07:00 PM',
-                    type: ScheduleType.practicanteTarde,
-                    isSelected: selectedType == ScheduleType.practicanteTarde,
-                    isDark: isDark,
-                    onTap: () => updatePreset(ScheduleType.practicanteTarde),
+                    onTap: () => updatePreset(ScheduleType.institucional),
                   ),
                   const SizedBox(height: 8),
                   _buildPresetTile(
                     title: 'Horario Personalizado',
-                    subtitle: 'Ajustar horas libremente',
+                    subtitle: 'Ajustar horas de entrada y salida libremente',
                     type: ScheduleType.personalizado,
                     isSelected: selectedType == ScheduleType.personalizado,
                     isDark: isDark,
@@ -589,17 +842,8 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
 
   Color _getScheduleBadgeBg(ScheduleType type, bool isDark) {
     switch (type) {
-      case ScheduleType.flexible:
-        return isDark ? const Color(0xFF064E3B).withValues(alpha: 0.35) : const Color(0xFFD1FAE5);
-      case ScheduleType.contratado:
-      case ScheduleType.permanente:
+      case ScheduleType.institucional:
         return isDark ? const Color(0xFF1E3A8A).withValues(alpha: 0.3) : const Color(0xFFDBEAFE);
-      case ScheduleType.voluntarioManana:
-      case ScheduleType.voluntarioTarde:
-        return isDark ? const Color(0xFF78350F).withValues(alpha: 0.3) : const Color(0xFFFEF3C7);
-      case ScheduleType.practicanteManana:
-      case ScheduleType.practicanteTarde:
-        return isDark ? const Color(0xFF581C87).withValues(alpha: 0.3) : const Color(0xFFF3E8FF);
       case ScheduleType.personalizado:
         return isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
     }
@@ -607,17 +851,8 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
 
   Color _getScheduleBadgeTextColor(ScheduleType type, bool isDark) {
     switch (type) {
-      case ScheduleType.flexible:
-        return isDark ? const Color(0xFF6EE7B7) : const Color(0xFF047857);
-      case ScheduleType.contratado:
-      case ScheduleType.permanente:
+      case ScheduleType.institucional:
         return isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8);
-      case ScheduleType.voluntarioManana:
-      case ScheduleType.voluntarioTarde:
-        return isDark ? const Color(0xFFFCD34D) : const Color(0xFFB45309);
-      case ScheduleType.practicanteManana:
-      case ScheduleType.practicanteTarde:
-        return isDark ? const Color(0xFFD8B4FE) : const Color(0xFF7E22CE);
       case ScheduleType.personalizado:
         return isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
     }
@@ -779,23 +1014,45 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                       ],
 
                       // Barra de Búsqueda de Personal
-                      Container(
-                        decoration: BoxDecoration(
-                          color: ThemeService.cardBg(context),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: ThemeService.cardBorder(context)),
-                        ),
-                        child: TextField(
-                          onChanged: (val) => setState(() => _searchQuery = val.trim()),
-                          style: TextStyle(fontSize: 14, color: isDark ? Colors.white : const Color(0xFF0F172A)),
-                          decoration: InputDecoration(
-                            hintText: 'Buscar personal por nombre o correo...',
-                            hintStyle: TextStyle(fontSize: 13, color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
-                            prefixIcon: Icon(Icons.search_rounded, size: 20, color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: ThemeService.cardBg(context),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: ThemeService.cardBorder(context)),
+                              ),
+                              child: TextField(
+                                onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                                style: TextStyle(fontSize: 14, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                                decoration: InputDecoration(
+                                  hintText: 'Buscar personal por nombre o correo...',
+                                  hintStyle: TextStyle(fontSize: 13, color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                                  prefixIcon: Icon(Icons.search_rounded, size: 20, color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                          if (isAdmin) ...[
+                            const SizedBox(width: 8),
+                            InkWell(
+                              borderRadius: BorderRadius.circular(14),
+                              onTap: _showDirectDeleteDialog,
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.25)),
+                                ),
+                                child: const Icon(Icons.person_remove_rounded, color: Color(0xFFEF4444), size: 22),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
 
                       const SizedBox(height: 18),
@@ -904,6 +1161,19 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                                                       maxLines: 1,
                                                       overflow: TextOverflow.ellipsis,
                                                     ),
+                                                    if (u.office.isNotEmpty || u.area.isNotEmpty) ...[
+                                                      const SizedBox(height: 2),
+                                                      Text(
+                                                        [if (u.office.isNotEmpty) u.office, if (u.area.isNotEmpty) u.area].join(' • '),
+                                                        style: const TextStyle(
+                                                          fontSize: 11,
+                                                          color: Color(0xFF2D5E2A),
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ],
                                                   ],
                                                 ),
                                               ),
@@ -918,7 +1188,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                                                   borderRadius: BorderRadius.circular(6),
                                                 ),
                                                 child: Text(
-                                                  u.role.name,
+                                                  u.role.displayName,
                                                   style: TextStyle(
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.bold,
@@ -951,7 +1221,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                                                           borderRadius: BorderRadius.circular(6),
                                                         ),
                                                         child: Text(
-                                                          '${schedule.fullLabel} • Tol: ${schedule.toleranceMinutes}m',
+                                                          '${schedule.fullLabel} • Tol: 08:30 AM',
                                                           style: TextStyle(
                                                             fontSize: 11,
                                                             fontWeight: FontWeight.w600,
@@ -978,14 +1248,9 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                                                 ),
                                                 onPressed: () => _openScheduleDialog(u),
                                               ),
-                                              if (isAdmin && u.isSupervisor) ...[
+                                              if (isAdmin && u.id != currentUser?.id) ...[
                                                 const SizedBox(width: 4),
-                                                IconButton(
-                                                  icon: const Icon(Icons.person_remove_rounded, color: Color(0xFFEF4444), size: 18),
-                                                  tooltip: 'Revocar cargo de supervisor',
-                                                  visualDensity: VisualDensity.compact,
-                                                  onPressed: () => _confirmRevoke(u.id, u.fullName),
-                                                ),
+                                                _buildAdminUserActions(u),
                                               ],
                                             ],
                                           ),
