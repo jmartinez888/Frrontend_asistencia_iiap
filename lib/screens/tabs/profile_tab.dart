@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../utils/responsive.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../models/user_model.dart';
@@ -28,6 +29,9 @@ class _ProfileTabState extends State<ProfileTab> {
   bool _isEditingInstitutionalInfo = false;
   late final TextEditingController _officeController;
   late final TextEditingController _areaController;
+  late final TextEditingController _documentController;
+  late final TextEditingController _phoneController;
+  String _documentType = 'DNI';
   bool _isSavingInstitutionalInfo = false;
 
   @override
@@ -36,36 +40,128 @@ class _ProfileTabState extends State<ProfileTab> {
     final user = StorageService.currentUser;
     _officeController = TextEditingController(text: user?.office ?? '');
     _areaController = TextEditingController(text: user?.area ?? '');
+    _documentController = TextEditingController(text: user?.documentNumber ?? '');
+    _phoneController = TextEditingController(text: user?.phoneNumber ?? '');
+    _documentType = _detectDocumentType(user?.documentNumber);
   }
 
   @override
   void dispose() {
     _officeController.dispose();
     _areaController.dispose();
+    _documentController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
+  String _detectDocumentType(String? doc) {
+    if (doc == null || doc.trim().isEmpty) return 'DNI';
+    final clean = doc.replaceAll(RegExp(r'''['"\s]'''), '').trim();
+    if (RegExp(r'^\d{8}$').hasMatch(clean)) return 'DNI';
+    if (RegExp(r'^[a-zA-Z0-9]{9}$').hasMatch(clean)) return 'CE';
+    return 'Pasaporte';
+  }
+
+  String _getDocumentLabel(String? doc) {
+    if (doc == null || doc.trim().isEmpty) return 'Documento';
+    final type = _detectDocumentType(doc);
+    if (type == 'CE') return 'CE';
+    if (type == 'Pasaporte') return 'Pasaporte';
+    return 'DNI';
+  }
+
+  void _startEditingInstitutionalInfo(UserModel user) {
+    setState(() {
+      _officeController.text = user.office;
+      _areaController.text = user.area;
+      _documentController.text = user.documentNumber ?? '';
+      _phoneController.text = user.phoneNumber ?? '';
+      _documentType = _detectDocumentType(user.documentNumber);
+      _isEditingInstitutionalInfo = true;
+    });
+  }
+
   Future<void> _saveInstitutionalInfo(UserModel user) async {
-    setState(() => _isSavingInstitutionalInfo = true);
     final newOffice = _officeController.text.trim();
     final newArea = _areaController.text.trim();
+    final newDoc = _documentController.text.replaceAll(RegExp(r'''['"\s]'''), '').trim();
+    final newPhone = _phoneController.text.replaceAll(RegExp(r'''['"\s]'''), '').trim();
+
+    // Validar formato de documento si fue ingresado
+    if (newDoc.isNotEmpty) {
+      if (_documentType == 'DNI' && (!RegExp(r'^\d{8}$').hasMatch(newDoc))) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('El DNI debe tener exactamente 8 dígitos numéricos.'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        return;
+      } else if (_documentType == 'CE' && (!RegExp(r'^[a-zA-Z0-9]{9}$').hasMatch(newDoc))) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('El Carné de Extranjería (CE) debe tener exactamente 9 caracteres.'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        return;
+      } else if (_documentType == 'Pasaporte' && (newDoc.length < 6 || newDoc.length > 12)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('El Pasaporte debe tener entre 6 y 12 caracteres.'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        return;
+      }
+    }
+
+    setState(() => _isSavingInstitutionalInfo = true);
 
     try {
       final updatedUser = user.copyWith(
         position: newOffice.isEmpty ? null : newOffice,
         department: newArea.isEmpty ? null : newArea,
+        documentNumber: newDoc.isEmpty ? null : newDoc,
+        phoneNumber: newPhone.isEmpty ? null : newPhone,
       );
 
       // 1. Guardar y refrescar de inmediato en el almacenamiento y sesión local
       await StorageService.updateCurrentUser(updatedUser);
 
-      // 2. Sincronizar en segundo plano con el backend
+      // 2. Sincronizar en backend y base de datos
       try {
-        await UsersService.updateProfile({
+        final profileData = <String, dynamic>{
           'position': newOffice,
           'department': newArea,
-        });
-      } catch (_) {}
+          'document_number': newDoc.isEmpty ? null : newDoc,
+          'phone_number': newPhone.isEmpty ? null : newPhone,
+        };
+        final updatedFromApi = await UsersService.updateProfile(profileData);
+        await StorageService.updateCurrentUser(updatedFromApi);
+      } catch (err) {
+        debugPrint('Error sincronizando perfil con backend: $err');
+        final errStr = err.toString();
+        if (errStr.contains('ya está registrado') || errStr.contains('documento')) {
+          if (!mounted) return;
+          setState(() => _isSavingInstitutionalInfo = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('El número de documento ya está registrado por otro usuario.'),
+              backgroundColor: const Color(0xFFEF4444),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+          return;
+        }
+      }
 
       if (!mounted) return;
       setState(() {
@@ -79,7 +175,7 @@ class _ProfileTabState extends State<ProfileTab> {
             children: [
               Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
               SizedBox(width: 10),
-              Text('Oficina y Área guardadas correctamente.'),
+              Text('Información institucional actualizada correctamente.'),
             ],
           ),
           backgroundColor: ThemeService.primaryColor(context),
@@ -95,6 +191,7 @@ class _ProfileTabState extends State<ProfileTab> {
           content: Text('Error al guardar: $e'),
           backgroundColor: const Color(0xFFEF4444),
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     }
@@ -1584,6 +1681,9 @@ class _ProfileTabState extends State<ProfileTab> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primary = ThemeService.primaryColor(context);
 
+    final docType = _detectDocumentType(user.documentNumber);
+    final docLabel = _getDocumentLabel(user.documentNumber);
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -1613,13 +1713,7 @@ class _ProfileTabState extends State<ProfileTab> {
                 ),
                 InkWell(
                   borderRadius: BorderRadius.circular(20),
-                  onTap: () {
-                    setState(() {
-                      _officeController.text = user.office;
-                      _areaController.text = user.area;
-                      _isEditingInstitutionalInfo = true;
-                    });
-                  },
+                  onTap: () => _startEditingInstitutionalInfo(user),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -1648,19 +1742,14 @@ class _ProfileTabState extends State<ProfileTab> {
             ),
             const SizedBox(height: 16),
 
-            // Fila Oficina (Editable al tocar)
+            // Fila Oficina (Sin desbordamiento / overflow protegido)
             InkWell(
               borderRadius: BorderRadius.circular(10),
-              onTap: () {
-                setState(() {
-                  _officeController.text = user.office;
-                  _areaController.text = user.area;
-                  _isEditingInstitutionalInfo = true;
-                });
-              },
+              onTap: () => _startEditingInstitutionalInfo(user),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: 5),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Icon(Icons.apartment_rounded, size: 20, color: primary),
                     const SizedBox(width: 12),
@@ -1671,16 +1760,21 @@ class _ProfileTabState extends State<ProfileTab> {
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                       ),
                     ),
-                    const Spacer(),
-                    Text(
-                      user.office.isNotEmpty ? user.office : 'Sin asignar',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: user.office.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
-                        fontStyle: user.office.isNotEmpty ? FontStyle.normal : FontStyle.italic,
-                        color: user.office.isNotEmpty
-                            ? (isDark ? Colors.white : const Color(0xFF0F172A))
-                            : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        user.office.isNotEmpty ? user.office : 'Sin asignar',
+                        textAlign: TextAlign.end,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: user.office.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
+                          fontStyle: user.office.isNotEmpty ? FontStyle.normal : FontStyle.italic,
+                          color: user.office.isNotEmpty
+                              ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                              : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -1695,19 +1789,14 @@ class _ProfileTabState extends State<ProfileTab> {
             ),
             const SizedBox(height: 10),
 
-            // Fila Área (Editable al tocar)
+            // Fila Área (Sin desbordamiento / overflow protegido)
             InkWell(
               borderRadius: BorderRadius.circular(10),
-              onTap: () {
-                setState(() {
-                  _officeController.text = user.office;
-                  _areaController.text = user.area;
-                  _isEditingInstitutionalInfo = true;
-                });
-              },
+              onTap: () => _startEditingInstitutionalInfo(user),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: 5),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Icon(Icons.grid_view_rounded, size: 20, color: primary),
                     const SizedBox(width: 12),
@@ -1718,16 +1807,21 @@ class _ProfileTabState extends State<ProfileTab> {
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                       ),
                     ),
-                    const Spacer(),
-                    Text(
-                      user.area.isNotEmpty ? user.area : 'Sin asignar',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: user.area.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
-                        fontStyle: user.area.isNotEmpty ? FontStyle.normal : FontStyle.italic,
-                        color: user.area.isNotEmpty
-                            ? (isDark ? Colors.white : const Color(0xFF0F172A))
-                            : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        user.area.isNotEmpty ? user.area : 'Sin asignar',
+                        textAlign: TextAlign.end,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: user.area.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
+                          fontStyle: user.area.isNotEmpty ? FontStyle.normal : FontStyle.italic,
+                          color: user.area.isNotEmpty
+                              ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                              : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -1742,58 +1836,102 @@ class _ProfileTabState extends State<ProfileTab> {
             ),
             const SizedBox(height: 10),
 
-            // Fila DNI
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Icon(Icons.badge_outlined, size: 20, color: primary),
-                  const SizedBox(width: 12),
-                  Text(
-                    'DNI / Doc',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            // Fila Documento dinámica (DNI / CE / Pasaporte según corresponda)
+            InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => _startEditingInstitutionalInfo(user),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Icon(
+                      docType == 'CE'
+                          ? Icons.credit_card_outlined
+                          : (docType == 'Pasaporte'
+                              ? Icons.menu_book_outlined
+                              : Icons.badge_outlined),
+                      size: 20,
+                      color: primary,
                     ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    user.documentNumber?.isNotEmpty == true ? user.documentNumber! : 'No registrado',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    const SizedBox(width: 12),
+                    Text(
+                      docLabel,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        user.documentNumber?.isNotEmpty == true ? user.documentNumber! : 'No registrado',
+                        textAlign: TextAlign.end,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: user.documentNumber?.isNotEmpty == true ? FontWeight.w600 : FontWeight.normal,
+                          fontStyle: user.documentNumber?.isNotEmpty == true ? FontStyle.normal : FontStyle.italic,
+                          color: user.documentNumber?.isNotEmpty == true
+                              ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                              : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.edit_outlined,
+                      size: 14,
+                      color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 10),
 
             // Fila Teléfono
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Icon(Icons.phone_outlined, size: 20, color: primary),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Teléfono',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => _startEditingInstitutionalInfo(user),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Icon(Icons.phone_outlined, size: 20, color: primary),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Teléfono',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    user.phoneNumber?.isNotEmpty == true ? user.phoneNumber! : 'No registrado',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        user.phoneNumber?.isNotEmpty == true ? user.phoneNumber! : 'No registrado',
+                        textAlign: TextAlign.end,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: user.phoneNumber?.isNotEmpty == true ? FontWeight.w600 : FontWeight.normal,
+                          fontStyle: user.phoneNumber?.isNotEmpty == true ? FontStyle.normal : FontStyle.italic,
+                          color: user.phoneNumber?.isNotEmpty == true
+                              ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                              : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.edit_outlined,
+                      size: 14,
+                      color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -1805,7 +1943,7 @@ class _ProfileTabState extends State<ProfileTab> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Editar Oficina y Área',
+                  'Editar Información',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -1819,9 +1957,9 @@ class _ProfileTabState extends State<ProfileTab> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
-              'Ingresa o actualiza tu oficina y área de trabajo institucional:',
+              'Actualiza tus datos laborales y de identificación:',
               style: TextStyle(
                 fontSize: 12,
                 color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -1853,6 +1991,80 @@ class _ProfileTabState extends State<ProfileTab> {
                 labelText: 'Área',
                 hintText: 'Ej. Tecnologías de la Información, Recursos Humanos...',
                 prefixIcon: Icon(Icons.grid_view_rounded, size: 20, color: primary),
+                filled: true,
+                fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Selector Tipo de Documento
+            Text(
+              'Tipo de Documento',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildDocTypeChip('DNI', Icons.badge_outlined, primary, isDark),
+                const SizedBox(width: 8),
+                _buildDocTypeChip('CE', Icons.credit_card_outlined, primary, isDark),
+                const SizedBox(width: 8),
+                _buildDocTypeChip('Pasaporte', Icons.menu_book_outlined, primary, isDark),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Campo Número de Documento
+            TextField(
+              controller: _documentController,
+              keyboardType: _documentType == 'DNI' ? TextInputType.number : TextInputType.text,
+              maxLength: _documentType == 'DNI' ? 8 : (_documentType == 'CE' ? 9 : 12),
+              inputFormatters: [
+                if (_documentType == 'DNI') FilteringTextInputFormatter.digitsOnly,
+                if (_documentType != 'DNI') FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+              ],
+              style: TextStyle(fontSize: 13.5, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+              decoration: InputDecoration(
+                labelText: 'Nº de $_documentType',
+                hintText: _documentType == 'DNI'
+                    ? '8 dígitos numéricos'
+                    : (_documentType == 'CE' ? '9 caracteres alfanuméricos' : '6 a 12 caracteres'),
+                prefixIcon: Icon(
+                  _documentType == 'CE'
+                      ? Icons.credit_card_outlined
+                      : (_documentType == 'Pasaporte' ? Icons.menu_book_outlined : Icons.badge_outlined),
+                  size: 20,
+                  color: primary,
+                ),
+                counterText: '',
+                filled: true,
+                fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Campo Teléfono
+            TextField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              maxLength: 15,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s-]')),
+              ],
+              style: TextStyle(fontSize: 13.5, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+              decoration: InputDecoration(
+                labelText: 'Teléfono',
+                hintText: 'Ej. 900972970',
+                prefixIcon: Icon(Icons.phone_outlined, size: 20, color: primary),
+                counterText: '',
                 filled: true,
                 fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -1897,6 +2109,57 @@ class _ProfileTabState extends State<ProfileTab> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDocTypeChip(String type, IconData icon, Color primary, bool isDark) {
+    final isSelected = _documentType == type;
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () {
+          if (_documentType != type) {
+            setState(() {
+              _documentType = type;
+            });
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? primary.withValues(alpha: 0.15)
+                : (isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF1F5F9)),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? primary : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 14,
+                color: isSelected
+                    ? primary
+                    : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                type,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? primary : (isDark ? Colors.white70 : const Color(0xFF475569)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
