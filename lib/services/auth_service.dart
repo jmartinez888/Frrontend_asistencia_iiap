@@ -255,31 +255,42 @@ class AuthService {
     dynamic response;
     dynamic lastError;
 
-    // 1. Intentar endpoint oficial DELETE /api/users/me/account con confirmación de password
+    // 1. Intentar endpoint oficial DELETE /api/auth/delete-account con confirmación de password
     try {
       response = await ApiClient.delete(
-        '${ApiConfig.baseUrl}/users/me/account',
+        '${ApiConfig.baseUrl}/auth/delete-account',
         body: {
           'password': password,
         },
       );
-    } catch (e1) {
-      lastError = e1;
-      // 2. Intentar DELETE por ID con password
-      if (userId.isNotEmpty) {
-        try {
-          response = await ApiClient.delete(
-            ApiConfig.userById(userId),
-            body: {
-              'password': password,
-            },
-          );
-        } catch (e2) {
-          lastError = e2;
+    } catch (e0) {
+      lastError = e0;
+      // 2. Intentar endpoint alternativo DELETE /api/users/me/account
+      try {
+        response = await ApiClient.delete(
+          '${ApiConfig.baseUrl}/users/me/account',
+          body: {
+            'password': password,
+          },
+        );
+      } catch (e1) {
+        lastError = e1;
+        // 3. Intentar DELETE por ID
+        if (userId.isNotEmpty) {
           try {
-            response = await ApiClient.delete(ApiConfig.userById(userId));
-          } catch (e3) {
-            lastError = e3;
+            response = await ApiClient.delete(
+              ApiConfig.userById(userId),
+              body: {
+                'password': password,
+              },
+            );
+          } catch (e2) {
+            lastError = e2;
+            try {
+              response = await ApiClient.delete(ApiConfig.userById(userId));
+            } catch (e3) {
+              lastError = e3;
+            }
           }
         }
       }
