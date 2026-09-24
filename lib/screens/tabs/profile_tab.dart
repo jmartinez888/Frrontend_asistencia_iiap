@@ -175,7 +175,7 @@ class _ProfileTabState extends State<ProfileTab> {
             children: [
               Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
               SizedBox(width: 10),
-              Text('Información institucional actualizada correctamente.'),
+              Text('Información actualizada'),
             ],
           ),
           backgroundColor: ThemeService.primaryColor(context),
@@ -235,7 +235,7 @@ class _ProfileTabState extends State<ProfileTab> {
             children: [
               Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
               SizedBox(width: 10),
-              Text('Foto de perfil actualizada correctamente.'),
+              Text('Foto actualizada'),
             ],
           ),
           backgroundColor: ThemeService.primaryColor(context),

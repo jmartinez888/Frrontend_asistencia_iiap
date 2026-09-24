@@ -78,15 +78,15 @@ class ShiftJourneyCard extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cabecera: Fecha + Turno + Nombre (si aplica)
+            // Cabecera: Fecha + Turno + Estado
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
                     color: shiftBg,
                     borderRadius: BorderRadius.circular(8),
@@ -97,14 +97,14 @@ class ShiftJourneyCard extends StatelessWidget {
                     children: [
                       Icon(
                         isMorning ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded,
-                        size: 13,
+                        size: 11,
                         color: shiftColor,
                       ),
-                      const SizedBox(width: 5),
+                      const SizedBox(width: 4),
                       Text(
                         journey.shift.fullLabel,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: shiftColor,
                         ),
@@ -112,11 +112,11 @@ class ShiftJourneyCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Text(
                   _formatDate(journey.workDate),
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   ),
@@ -125,7 +125,7 @@ class ShiftJourneyCard extends StatelessWidget {
                 // Badge de Estado Global de la Jornada
                 if (hasExit)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
                     decoration: BoxDecoration(
                       color: (isDark ? const Color(0xFF14532D) : const Color(0xFFDCFCE7)).withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(6),
@@ -133,7 +133,7 @@ class ShiftJourneyCard extends StatelessWidget {
                     child: Text(
                       'Completado',
                       style: TextStyle(
-                        fontSize: 10.5,
+                        fontSize: 9.5,
                         fontWeight: FontWeight.bold,
                         color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A),
                       ),
@@ -141,7 +141,7 @@ class ShiftJourneyCard extends StatelessWidget {
                   )
                 else if (isMissingCheckout)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
                     decoration: BoxDecoration(
                       color: (isDark ? const Color(0xFF78350F) : const Color(0xFFFEF3C7)).withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(6),
@@ -151,14 +151,14 @@ class ShiftJourneyCard extends StatelessWidget {
                       children: [
                         Icon(
                           Icons.warning_amber_rounded,
-                          size: 12,
+                          size: 11,
                           color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 3),
                         Text(
-                          'Salida no registrada',
+                          'Sin salida',
                           style: TextStyle(
-                            fontSize: 10.5,
+                            fontSize: 9.5,
                             fontWeight: FontWeight.bold,
                             color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
                           ),
@@ -168,7 +168,7 @@ class ShiftJourneyCard extends StatelessWidget {
                   )
                 else
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
                     decoration: BoxDecoration(
                       color: Colors.blue.withValues(alpha: isDark ? 0.2 : 0.1),
                       borderRadius: BorderRadius.circular(6),
@@ -176,12 +176,12 @@ class ShiftJourneyCard extends StatelessWidget {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.timelapse_rounded, size: 12, color: Colors.blue),
-                        SizedBox(width: 4),
+                        Icon(Icons.timelapse_rounded, size: 11, color: Colors.blue),
+                        SizedBox(width: 3),
                         Text(
                           'En curso',
                           style: TextStyle(
-                            fontSize: 10.5,
+                            fontSize: 9.5,
                             fontWeight: FontWeight.bold,
                             color: Colors.blue,
                           ),
@@ -206,7 +206,7 @@ class ShiftJourneyCard extends StatelessWidget {
                     child: Text(
                       journey.userName!,
                       style: TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
                       ),
@@ -226,7 +226,7 @@ class ShiftJourneyCard extends StatelessWidget {
               ),
             ],
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             const Divider(height: 1),
             const SizedBox(height: 10),
 
@@ -236,7 +236,7 @@ class ShiftJourneyCard extends StatelessWidget {
                 // Columna Entrada
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.5) : const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(10),
@@ -249,43 +249,47 @@ class ShiftJourneyCard extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.login_rounded, size: 14, color: Color(0xFF16A34A)),
-                            const SizedBox(width: 5),
+                            const Icon(Icons.login_rounded, size: 12, color: Color(0xFF16A34A)),
+                            const SizedBox(width: 4),
                             const Text(
                               'ENTRADA',
                               style: TextStyle(
-                                fontSize: 10.5,
+                                fontSize: 9.5,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF16A34A),
-                                letterSpacing: 0.5,
+                                letterSpacing: 0.3,
                               ),
                             ),
                             const Spacer(),
                             if (checkIn != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: checkIn.status == AttendanceStatus.ON_TIME
-                                      ? Colors.green.withValues(alpha: 0.15)
-                                      : Colors.red.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  checkIn.status.label,
-                                  style: TextStyle(
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.bold,
-                                    color: checkIn.status == AttendanceStatus.ON_TIME ? Colors.green : Colors.red,
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: checkIn.status == AttendanceStatus.ON_TIME
+                                        ? Colors.green.withValues(alpha: 0.15)
+                                        : Colors.red.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    checkIn.status.label,
+                                    style: TextStyle(
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: checkIn.status == AttendanceStatus.ON_TIME ? Colors.green : Colors.red,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ),
                           ],
                         ),
-                        const SizedBox(height: 5),
+                        const SizedBox(height: 4),
                         Text(
                           _formatTime(checkIn?.timestamp),
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w700,
                             color: isDark ? Colors.white : const Color(0xFF0F172A),
                           ),
@@ -294,11 +298,11 @@ class ShiftJourneyCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 // Columna Salida
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.5) : const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(10),
@@ -313,63 +317,71 @@ class ShiftJourneyCard extends StatelessWidget {
                           children: [
                             Icon(
                               Icons.logout_rounded,
-                              size: 14,
+                              size: 12,
                               color: hasExit
                                   ? const Color(0xFFD97706)
                                   : (isMissingCheckout ? Colors.amber : Colors.grey),
                             ),
-                            const SizedBox(width: 5),
+                            const SizedBox(width: 4),
                             Text(
                               'SALIDA',
                               style: TextStyle(
-                                fontSize: 10.5,
+                                fontSize: 9.5,
                                 fontWeight: FontWeight.bold,
                                 color: hasExit
                                     ? const Color(0xFFD97706)
                                     : (isMissingCheckout ? Colors.amber : Colors.grey),
-                                letterSpacing: 0.5,
+                                letterSpacing: 0.3,
                               ),
                             ),
                             const Spacer(),
                             if (hasExit)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'Registrada',
-                                  style: TextStyle(
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.amber,
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'Registrada',
+                                    style: TextStyle(
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.amber,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               )
                             else if (isMissingCheckout)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'No marcada',
-                                  style: TextStyle(
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.amber,
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'Pendiente',
+                                    style: TextStyle(
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.amber,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ),
                           ],
                         ),
-                        const SizedBox(height: 5),
+                        const SizedBox(height: 4),
                         Text(
                           hasExit ? _formatTime(checkOut.timestamp) : '—',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w700,
                             color: hasExit
                                 ? (isDark ? Colors.white : const Color(0xFF0F172A))
