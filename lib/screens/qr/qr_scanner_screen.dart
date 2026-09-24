@@ -45,7 +45,11 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     final cleanCode = rawCode.trim();
     if (cleanCode.isEmpty) return;
 
-    setState(() => _isProcessing = true);
+    _isProcessing = true;
+    try {
+      await _scannerController.stop();
+    } catch (_) {}
+    if (mounted) setState(() {});
 
     try {
       // 1. Si el target es explícitamente supervisorPromotion
@@ -129,11 +133,19 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       await _showErrorDialog(e.message);
+      if (mounted) {
+        try {
+          await _scannerController.start();
+        } catch (_) {}
+        setState(() => _isProcessing = false);
+      }
     } catch (e) {
       if (!mounted) return;
       await _showErrorDialog('Error al procesar el código: $e');
-    } finally {
       if (mounted) {
+        try {
+          await _scannerController.start();
+        } catch (_) {}
         setState(() => _isProcessing = false);
       }
     }
