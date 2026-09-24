@@ -8,6 +8,7 @@ import 'tabs/attendance_tab.dart';
 import 'tabs/supervisors_tab.dart';
 import 'tabs/profile_tab.dart';
 import '../services/theme_service.dart';
+import '../services/notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _startSyncTimer();
+    NotificationService.checkAndTriggerCheckoutReminder();
   }
 
   @override
@@ -39,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _syncProfile();
+      NotificationService.checkAndTriggerCheckoutReminder();
     }
   }
 
@@ -54,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (_isSyncing) return;
     _isSyncing = true;
     try {
+      NotificationService.checkAndTriggerCheckoutReminder();
       final oldUser = StorageService.currentUser;
       final newUser = await AuthService.getProfile();
       if (!mounted) return;

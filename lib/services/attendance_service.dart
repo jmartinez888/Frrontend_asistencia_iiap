@@ -29,6 +29,7 @@ class AttendanceService {
     double? longitude,
     String? deviceId,
     AttendanceType? type,
+    AttendanceShift? shift,
   }) async {
     final body = <String, dynamic>{
       'qr_code': qrCode.trim(),
@@ -37,6 +38,7 @@ class AttendanceService {
     if (longitude != null) body['longitude'] = longitude;
     if (deviceId != null) body['device_id'] = deviceId;
     if (type != null) body['type'] = type.name;
+    if (shift != null) body['shift'] = shift.name;
 
     final response = await ApiClient.post(ApiConfig.attendanceScanQr, body: body);
     return AttendanceScanResult.fromJson(response as Map<String, dynamic>);
@@ -78,6 +80,15 @@ class AttendanceService {
     return [];
   }
 
+  // 7.1 Consultar colaboradores con salidas pendientes o no registradas (Admin y Supervisores)
+  static Future<List<Map<String, dynamic>>> getPendingCheckouts() async {
+    final response = await ApiClient.get(ApiConfig.attendancePendingCheckouts);
+    if (response is List) {
+      return response.map((item) => item as Map<String, dynamic>).toList();
+    }
+    return [];
+  }
+
   // 8. Reinicio semanal del historial de asistencias (Solo ADMIN)
   static Future<Map<String, dynamic>> clearWeeklyHistory() async {
     final response = await ApiClient.delete(ApiConfig.attendanceWeeklyReset);
@@ -89,6 +100,7 @@ class AttendanceService {
     String? userId,
     String? dni,
     required String type,
+    String? shift,
     required String observation,
   }) async {
     final response = await ApiClient.post(
@@ -97,10 +109,10 @@ class AttendanceService {
         if (userId != null && userId.isNotEmpty) 'user_id': userId,
         if (dni != null && dni.isNotEmpty) 'dni': dni,
         'type': type,
+        if (shift != null && shift.isNotEmpty) 'shift': shift,
         'observation': observation,
       },
     );
     return response as Map<String, dynamic>;
   }
-
 }

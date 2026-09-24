@@ -5,7 +5,8 @@ import '../../models/user_model.dart';
 import '../../services/storage_service.dart';
 import '../../services/attendance_service.dart';
 import '../../services/pdf_report_service.dart';
-import '../../widgets/attendance_card.dart';
+import '../../widgets/shift_journey_card.dart';
+import '../../widgets/pending_checkout_card.dart';
 import '../../services/theme_service.dart';
 
 class AttendanceTab extends StatefulWidget {
@@ -15,14 +16,15 @@ class AttendanceTab extends StatefulWidget {
   State<AttendanceTab> createState() => _AttendanceTabState();
 }
 
-class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProviderStateMixin {
+class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateMixin {
   TabController? _tabController;
   List<AttendanceModel> _myRecords = [];
   List<AttendanceModel> _allRecords = [];
+  List<Map<String, dynamic>> _pendingCheckouts = [];
   bool _isLoadingMy = true;
   bool _isLoadingAll = false;
+  bool _isLoadingPending = false;
   bool _hasFetchedMy = false;
-  bool _hasFetchedAll = false;
   bool _isGeneratingPdf = false;
 
   @override
@@ -30,11 +32,14 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
     super.initState();
     final user = StorageService.currentUserNotifier.value;
     if (user != null && user.isAdmin) {
-      _loadAllRecords();
-    } else if (user != null && user.isSupervisor) {
       _tabController = TabController(length: 2, vsync: this);
       _loadAllRecords();
+      _loadPendingCheckouts();
+    } else if (user != null && user.isSupervisor) {
+      _tabController = TabController(length: 3, vsync: this);
+      _loadAllRecords();
       _loadMyRecords();
+      _loadPendingCheckouts();
     } else {
       _loadMyRecords();
     }
@@ -75,15 +80,30 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
         setState(() {
           _allRecords = records;
           _isLoadingAll = false;
-          _hasFetchedAll = true;
         });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
           _isLoadingAll = false;
-          _hasFetchedAll = true;
         });
+      }
+    }
+  }
+
+  Future<void> _loadPendingCheckouts() async {
+    setState(() => _isLoadingPending = true);
+    try {
+      final list = await AttendanceService.getPendingCheckouts();
+      if (mounted) {
+        setState(() {
+          _pendingCheckouts = list;
+          _isLoadingPending = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingPending = false);
       }
     }
   }
@@ -135,6 +155,8 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
     final dniController = TextEditingController();
     final obsController = TextEditingController();
     AttendanceType selectedType = AttendanceType.CHECK_IN;
+    AttendanceShift selectedShift =
+        DateTime.now().hour < 13 ? AttendanceShift.MORNING : AttendanceShift.AFTERNOON;
     bool isSubmitting = false;
 
     await showDialog(
@@ -143,7 +165,6 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
-          final primaryColor = ThemeService.primaryColor(context);
 
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -160,9 +181,18 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
-                  child: Text(
-                    'Marca de Contingencia',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Marcación Manual',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      Text(
+                        'Contingencia por Celular Avariado/Robado',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -173,7 +203,7 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Registrar asistencia manual para un colaborador con celular extraviado, robado o averiado.',
+                    'Registrar asistencia manual para un colaborador que no puede escanear el QR.',
                     style: TextStyle(
                       fontSize: 12.5,
                       color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -182,7 +212,8 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
                   const SizedBox(height: 16),
 
                   // Campo DNI
-                  const Text('Documento / DNI del Colaborador *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const Text('Documento / DNI del Colaborador *',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
                   TextField(
                     controller: dniController,
@@ -198,8 +229,98 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
                   ),
                   const SizedBox(height: 14),
 
+                  // Selector de Turno: MAÑANA / TARDE
+                  const Text('Turno de la Jornada *',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setDialogState(() => selectedShift = AttendanceShift.MORNING),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              color: selectedShift == AttendanceShift.MORNING
+                                  ? Colors.blue.withValues(alpha: 0.2)
+                                  : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04)),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: selectedShift == AttendanceShift.MORNING
+                                    ? Colors.blue
+                                    : Colors.transparent,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.wb_sunny_rounded,
+                                  size: 16,
+                                  color: selectedShift == AttendanceShift.MORNING ? Colors.blue : Colors.grey,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'MAÑANA',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: selectedShift == AttendanceShift.MORNING ? Colors.blue : Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setDialogState(() => selectedShift = AttendanceShift.AFTERNOON),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              color: selectedShift == AttendanceShift.AFTERNOON
+                                  ? Colors.amber.withValues(alpha: 0.2)
+                                  : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04)),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: selectedShift == AttendanceShift.AFTERNOON
+                                    ? Colors.amber
+                                    : Colors.transparent,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.nights_stay_rounded,
+                                  size: 16,
+                                  color: selectedShift == AttendanceShift.AFTERNOON ? Colors.amber : Colors.grey,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'TARDE',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: selectedShift == AttendanceShift.AFTERNOON ? Colors.amber : Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
                   // Selector de Tipo: ENTRADA / SALIDA
-                  const Text('Tipo de Marcación *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const Text('Tipo de Marcación *',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -289,7 +410,7 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
                     controller: obsController,
                     maxLines: 2,
                     decoration: InputDecoration(
-                      hintText: 'Ej. Celular averiado / Robo de equipo en trayecto',
+                      hintText: 'Ej. Celular averiado / Olvido involuntario',
                       prefixIcon: const Icon(Icons.edit_note_rounded, size: 20),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -305,7 +426,7 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
+                  backgroundColor: ThemeService.primaryColor(context),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
@@ -314,39 +435,31 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
                     : () async {
                         final dni = dniController.text.trim();
                         final obs = obsController.text.trim();
-
                         if (dni.length != 8) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('El DNI debe contener exactamente 8 dígitos.'),
-                              backgroundColor: Colors.red,
-                            ),
+                            const SnackBar(content: Text('El DNI debe tener 8 dígitos numéricos.')),
                           );
                           return;
                         }
-
                         if (obs.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Debe ingresar el motivo de contingencia.'),
-                              backgroundColor: Colors.red,
-                            ),
+                            const SnackBar(content: Text('Por favor ingresa la observación del motivo.')),
                           );
                           return;
                         }
 
-                        final scaffoldMessenger = ScaffoldMessenger.of(context);
-                        final navigator = Navigator.of(ctx);
-
                         setDialogState(() => isSubmitting = true);
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        final nav = Navigator.of(ctx);
+
                         try {
                           final res = await AttendanceService.registerManualAttendance(
                             dni: dni,
-                            type: selectedType == AttendanceType.CHECK_IN ? 'CHECK_IN' : 'CHECK_OUT',
+                            type: selectedType.name,
+                            shift: selectedShift.name,
                             observation: obs,
                           );
-
-                          navigator.pop();
+                          nav.pop();
                           scaffoldMessenger.showSnackBar(
                             SnackBar(
                               content: Text(res['message']?.toString() ?? 'Asistencia registrada con éxito.'),
@@ -355,6 +468,7 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
                           );
                           if (mounted) {
                             _loadAllRecords();
+                            _loadPendingCheckouts();
                             if (_tabController != null) {
                               _loadMyRecords();
                             }
@@ -432,6 +546,7 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
             ),
           );
           _loadAllRecords();
+          _loadPendingCheckouts();
         }
       } catch (e) {
         if (mounted) {
@@ -453,12 +568,13 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
       builder: (context, user, _) {
         final isAdmin = user != null && user.isAdmin;
         final isSupervisor = user != null && user.isSupervisor;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
 
-        // 1. Administrador General: SOLO Registro Institucional
+        // 1. Administrador General: TabBar con "Registro General" y "Pendientes de Salida"
         if (isAdmin) {
           return Scaffold(
             appBar: AppBar(
-              title: const Text('Registro Institucional', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              title: const Text('Control Institucional', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.person_add_alt_1_rounded),
@@ -484,15 +600,58 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
                 IconButton(
                   icon: const Icon(Icons.refresh_rounded),
                   tooltip: 'Actualizar',
-                  onPressed: _loadAllRecords,
+                  onPressed: () {
+                    _loadAllRecords();
+                    _loadPendingCheckouts();
+                  },
+                ),
+              ],
+              bottom: TabBar(
+                controller: _tabController,
+                labelColor: ThemeService.primaryColor(context),
+                indicatorColor: ThemeService.primaryColor(context),
+                unselectedLabelColor: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                indicatorWeight: 3,
+                tabs: [
+                  const Tab(
+                    icon: Icon(Icons.corporate_fare_rounded, size: 20),
+                    text: 'Registro General',
+                  ),
+                  Tab(
+                    icon: Badge(
+                      isLabelVisible: _pendingCheckouts.isNotEmpty,
+                      label: Text('${_pendingCheckouts.length}'),
+                      backgroundColor: Colors.amber[800],
+                      child: const Icon(Icons.pending_actions_rounded, size: 20),
+                    ),
+                    text: 'Pendientes de Salida',
+                  ),
+                ],
+              ),
+            ),
+            body: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildJourneyList(
+                  ShiftJourneyRecord.groupFromRecords(_allRecords),
+                  _isLoadingAll,
+                  () async {
+                    await _loadAllRecords();
+                    await _loadPendingCheckouts();
+                  },
+                  showUserName: true,
+                ),
+                _buildPendingList(
+                  _pendingCheckouts,
+                  _isLoadingPending,
+                  _loadPendingCheckouts,
                 ),
               ],
             ),
-            body: _buildList(_allRecords, _isLoadingAll, _loadAllRecords, showUserName: true),
           );
         }
 
-        // 2. Colaborador Regular: Solo su propio historial de asistencias
+        // 2. Colaborador Regular: Solo su propio historial de jornadas
         if (!isSupervisor) {
           if (!_hasFetchedMy && !_isLoadingMy) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -510,20 +669,16 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
                 ),
               ],
             ),
-            body: _buildList(_myRecords, _isLoadingMy, _loadMyRecords, showUserName: false),
+            body: _buildJourneyList(
+              ShiftJourneyRecord.groupFromRecords(_myRecords),
+              _isLoadingMy,
+              _loadMyRecords,
+              showUserName: false,
+            ),
           );
         }
 
-        // 3. Supervisor: Tiene sus marcas personales y el registro institucional general
-        if (_tabController == null) {
-          _tabController = TabController(length: 2, vsync: this);
-          if (!_hasFetchedAll && !_isLoadingAll) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) _loadAllRecords();
-            });
-          }
-        }
-        final isDark = Theme.of(context).brightness == Brightness.dark;
+        // 3. Supervisor: 3 pestañas: "Mis Asistencias", "Registro Institucional", "Pendientes de Salida"
         return Scaffold(
           appBar: AppBar(
             title: const Text('Control de Asistencias', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
@@ -549,6 +704,7 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
                 onPressed: () {
                   _loadMyRecords();
                   _loadAllRecords();
+                  _loadPendingCheckouts();
                 },
               ),
             ],
@@ -558,14 +714,23 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
               indicatorColor: ThemeService.primaryColor(context),
               unselectedLabelColor: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
               indicatorWeight: 3,
-              tabs: const [
-                Tab(
+              tabs: [
+                const Tab(
                   icon: Icon(Icons.person_outline_rounded, size: 20),
                   text: 'Mis Asistencias',
                 ),
-                Tab(
+                const Tab(
                   icon: Icon(Icons.corporate_fare_rounded, size: 20),
-                  text: 'Registro Institucional',
+                  text: 'Registro General',
+                ),
+                Tab(
+                  icon: Badge(
+                    isLabelVisible: _pendingCheckouts.isNotEmpty,
+                    label: Text('${_pendingCheckouts.length}'),
+                    backgroundColor: Colors.amber[800],
+                    child: const Icon(Icons.pending_actions_rounded, size: 20),
+                  ),
+                  text: 'Pendientes',
                 ),
               ],
             ),
@@ -573,8 +738,26 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
           body: TabBarView(
             controller: _tabController,
             children: [
-              _buildList(_myRecords, _isLoadingMy, _loadMyRecords, showUserName: false),
-              _buildList(_allRecords, _isLoadingAll, _loadAllRecords, showUserName: true),
+              _buildJourneyList(
+                ShiftJourneyRecord.groupFromRecords(_myRecords),
+                _isLoadingMy,
+                _loadMyRecords,
+                showUserName: false,
+              ),
+              _buildJourneyList(
+                ShiftJourneyRecord.groupFromRecords(_allRecords),
+                _isLoadingAll,
+                () async {
+                  await _loadAllRecords();
+                  await _loadPendingCheckouts();
+                },
+                showUserName: true,
+              ),
+              _buildPendingList(
+                _pendingCheckouts,
+                _isLoadingPending,
+                _loadPendingCheckouts,
+              ),
             ],
           ),
         );
@@ -582,8 +765,8 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
     );
   }
 
-  Widget _buildList(
-    List<AttendanceModel> records,
+  Widget _buildJourneyList(
+    List<ShiftJourneyRecord> journeys,
     bool isLoading,
     Future<void> Function() onRefresh, {
     required bool showUserName,
@@ -594,7 +777,7 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (records.isEmpty) {
+    if (journeys.isEmpty) {
       return RefreshIndicator(
         onRefresh: onRefresh,
         child: ListView(
@@ -609,7 +792,7 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
             ),
             const SizedBox(height: 16),
             const Text(
-              'No se encontraron registros',
+              'No se encontraron jornadas registradas',
               textAlign: TextAlign.center,
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
@@ -634,11 +817,73 @@ class _AttendanceTabState extends State<AttendanceTab> with SingleTickerProvider
         maxTabletWidth: 860,
         child: ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          itemCount: records.length,
+          itemCount: journeys.length,
           itemBuilder: (context, index) {
-            return AttendanceCard(
-              record: records[index],
+            return ShiftJourneyCard(
+              journey: journeys[index],
               showUserName: showUserName,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPendingList(
+    List<Map<String, dynamic>> items,
+    bool isLoading,
+    Future<void> Function() onRefresh,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (items.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: onRefresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(32),
+          children: [
+            const SizedBox(height: 60),
+            Icon(
+              Icons.check_circle_outline_rounded,
+              size: 56,
+              color: Colors.green.withValues(alpha: 0.7),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Sin salidas pendientes',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Todos los colaboradores han completado su registro de salida para sus jornadas.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: Responsive.constrained(
+        context,
+        maxTabletWidth: 860,
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          itemCount: items.length,
+          itemBuilder: (context, index) {
+            return PendingCheckoutCard(
+              item: items[index],
             );
           },
         ),

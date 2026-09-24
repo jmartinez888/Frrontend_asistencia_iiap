@@ -60,6 +60,7 @@ class ApiConfig {
   static String get attendanceMyRecords => '$baseUrl/attendance/my-records';
   static String get attendanceToday => '$baseUrl/attendance/today';
   static String get attendanceAll => '$baseUrl/attendance/all';
+  static String get attendancePendingCheckouts => '$baseUrl/attendance/pending-checkouts';
   static String get attendanceWeeklyReset => '$baseUrl/attendance/weekly-reset';
 }
 

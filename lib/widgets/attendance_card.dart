@@ -196,7 +196,7 @@ class AttendanceCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
-                                'Horario: ${evaluation.shiftLabel}',
+                                'Horario: ${record.shift.label}',
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,

@@ -6,6 +6,7 @@ import '../../services/attendance_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
 import '../../services/storage_service.dart';
+import '../../services/notification_service.dart';
 import '../../widgets/app_button.dart';
 
 enum ScanTarget {
@@ -92,6 +93,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
           longitude: lng,
           deviceId: deviceId,
         );
+        NotificationService.checkAndTriggerCheckoutReminder();
         if (!mounted) return;
 
                 final scanNow = DateTime.now();

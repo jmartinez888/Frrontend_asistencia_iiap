@@ -16,16 +16,45 @@ enum AttendanceType {
 
 enum AttendanceStatus {
   ON_TIME,
+  LATE,
   RECORDED;
 
   static AttendanceStatus fromString(String? status) {
-    if (status?.toUpperCase() == 'RECORDED') {
+    final s = status?.toUpperCase();
+    if (s == 'LATE') {
+      return AttendanceStatus.LATE;
+    }
+    if (s == 'RECORDED') {
       return AttendanceStatus.RECORDED;
     }
     return AttendanceStatus.ON_TIME;
   }
 
-  String get label => this == AttendanceStatus.ON_TIME ? 'A Tiempo' : 'Registrado';
+  String get label {
+    switch (this) {
+      case AttendanceStatus.ON_TIME:
+        return 'A tiempo';
+      case AttendanceStatus.LATE:
+        return 'Tarde';
+      case AttendanceStatus.RECORDED:
+        return 'Registrado';
+    }
+  }
+}
+
+enum AttendanceShift {
+  MORNING,
+  AFTERNOON;
+
+  static AttendanceShift fromString(String? shift) {
+    if (shift?.toUpperCase() == 'AFTERNOON') {
+      return AttendanceShift.AFTERNOON;
+    }
+    return AttendanceShift.MORNING;
+  }
+
+  String get label => this == AttendanceShift.MORNING ? 'Mañana' : 'Tarde';
+  String get fullLabel => this == AttendanceShift.MORNING ? 'Turno Mañana' : 'Turno Tarde';
 }
 
 class AttendanceModel {
@@ -34,6 +63,8 @@ class AttendanceModel {
   final DateTime timestamp;
   final AttendanceType type;
   final AttendanceStatus status;
+  final AttendanceShift shift;
+  final String? workDate;
   final String? scannedQrHash;
   final String? markedById;
   final String? userName;
@@ -52,6 +83,8 @@ class AttendanceModel {
     required this.timestamp,
     required this.type,
     required this.status,
+    this.shift = AttendanceShift.MORNING,
+    this.workDate,
     this.scannedQrHash,
     this.markedById,
     this.userName,
@@ -79,6 +112,8 @@ class AttendanceModel {
       timestamp: parsedTimestamp,
       type: AttendanceType.fromString(json['type']?.toString()),
       status: AttendanceStatus.fromString(json['status']?.toString()),
+      shift: AttendanceShift.fromString(json['shift']?.toString()),
+      workDate: json['work_date']?.toString(),
       scannedQrHash: json['scanned_qr_hash']?.toString(),
       markedById: json['marked_by_id']?.toString() ?? markedByMap?['id']?.toString(),
       userName: json['user_name']?.toString() ?? userMap?['full_name']?.toString(),
@@ -91,5 +126,81 @@ class AttendanceModel {
       isManual: json['is_manual'] == true,
       observation: json['observation']?.toString(),
     );
+  }
+}
+
+/// Representa una jornada de asistencia consolidada por Fecha y Turno (Entrada + Salida + Estado)
+class ShiftJourneyRecord {
+  final String id;
+  final String userId;
+  final String? userName;
+  final String? userEmail;
+  final String? userDocument;
+  final String workDate;
+  final AttendanceShift shift;
+  final AttendanceModel? checkIn;
+  final AttendanceModel? checkOut;
+
+  ShiftJourneyRecord({
+    required this.id,
+    required this.userId,
+    this.userName,
+    this.userEmail,
+    this.userDocument,
+    required this.workDate,
+    required this.shift,
+    this.checkIn,
+    this.checkOut,
+  });
+
+  bool get hasCheckIn => checkIn != null;
+  bool get hasCheckOut => checkOut != null;
+  bool get isCompleted => hasCheckIn && hasCheckOut;
+  bool get isPendingCheckOut => hasCheckIn && !hasCheckOut;
+
+  /// Agrupa registros planos en jornadas por (user_id, fecha, turno)
+  static List<ShiftJourneyRecord> groupFromRecords(List<AttendanceModel> records) {
+    final Map<String, ShiftJourneyRecord> map = {};
+    final sorted = List<AttendanceModel>.from(records)..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    for (final r in sorted) {
+      final dateStr = r.workDate ?? r.timestamp.toIso8601String().substring(0, 10);
+      final key = '${r.userId}_${dateStr}_${r.shift.name}';
+
+      final existing = map[key];
+      if (existing == null) {
+        map[key] = ShiftJourneyRecord(
+          id: r.id,
+          userId: r.userId,
+          userName: r.userName,
+          userEmail: r.userEmail,
+          userDocument: r.userDocument,
+          workDate: dateStr,
+          shift: r.shift,
+          checkIn: r.type == AttendanceType.CHECK_IN ? r : null,
+          checkOut: r.type == AttendanceType.CHECK_OUT ? r : null,
+        );
+      } else {
+        map[key] = ShiftJourneyRecord(
+          id: existing.id,
+          userId: existing.userId,
+          userName: existing.userName ?? r.userName,
+          userEmail: existing.userEmail ?? r.userEmail,
+          userDocument: existing.userDocument ?? r.userDocument,
+          workDate: existing.workDate,
+          shift: existing.shift,
+          checkIn: existing.checkIn ?? (r.type == AttendanceType.CHECK_IN ? r : null),
+          checkOut: existing.checkOut ?? (r.type == AttendanceType.CHECK_OUT ? r : null),
+        );
+      }
+    }
+
+    final result = map.values.toList();
+    result.sort((a, b) {
+      final timeA = a.checkIn?.timestamp ?? a.checkOut?.timestamp ?? DateTime(2000);
+      final timeB = b.checkIn?.timestamp ?? b.checkOut?.timestamp ?? DateTime(2000);
+      return timeB.compareTo(timeA);
+    });
+    return result;
   }
 }

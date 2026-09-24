@@ -7,6 +7,7 @@ import 'services/wallpaper_service.dart';
 import 'services/storage_service.dart';
 import 'services/schedule_service.dart';
 import 'services/connectivity_service.dart';
+import 'services/notification_service.dart';
 import 'screens/splash_gate_screen.dart';
 
 void main() async {
@@ -28,6 +29,7 @@ void main() async {
   await StorageService.init();
   await ScheduleService.init();
   await ConnectivityService.init();
+  await NotificationService.init();
   runApp(const MyApp());
 }
 
