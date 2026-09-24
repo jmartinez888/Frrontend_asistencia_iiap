@@ -25,6 +25,17 @@ class _SplashGateScreenState extends State<SplashGateScreen> {
     await Future.delayed(const Duration(milliseconds: 350));
 
     final token = await StorageService.getToken();
+    final user = StorageService.currentUser;
+
+    // 1. Si la cuenta ya está iniciada (token y perfil guardados), entrar de inmediato al Home
+    if (token != null && token.isNotEmpty && user != null) {
+      if (mounted) {
+        _navigateTo(const HomeScreen());
+      }
+      return;
+    }
+
+    // 2. Si hay token guardado pero falta el usuario en caché, sincronizar perfil
     if (token != null && token.isNotEmpty) {
       try {
         await AuthService.getProfile();
