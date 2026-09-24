@@ -115,20 +115,24 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         );
         if (mounted) Navigator.of(context).pop(true);
         return;
-      } on ApiException catch (_) {
-        // 3. Detección automática: Si no es QR de asistencia, comprobar si es QR de Supervisor
-        try {
-          final supervisorResult = await AttendanceService.scanSupervisorQr(cleanCode);
-          await AuthService.getProfile();
-          if (!mounted) return;
+      } on ApiException catch (attendanceError) {
+        // 3. Detección automática: Solo si el código no coincide con asistencia, verificar si es de Supervisor
+        if (attendanceError.message.contains('no es válido o ya fue dado de baja')) {
+          try {
+            final supervisorResult = await AttendanceService.scanSupervisorQr(cleanCode);
+            await AuthService.getProfile();
+            if (!mounted) return;
 
-          await _showSupervisorSuccessDialog(supervisorResult['message']?.toString());
-          if (mounted) Navigator.of(context).pop(true);
-          return;
-        } catch (_) {
-          // Si tampoco fue QR de supervisor, mostrar el mensaje de error de asistencia
-          rethrow;
+            await _showSupervisorSuccessDialog(supervisorResult['message']?.toString());
+            if (mounted) Navigator.of(context).pop(true);
+            return;
+          } catch (_) {
+            // Si tampoco fue QR de supervisor, propagamos el error original de asistencia
+            throw attendanceError;
+          }
         }
+        // Para cualquier otro error (GPS, fuera de horario, dispositivo, expirado, etc.), relanzar el error real
+        rethrow;
       }
     } on ApiException catch (e) {
       if (!mounted) return;

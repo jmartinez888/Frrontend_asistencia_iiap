@@ -47,7 +47,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _startSyncTimer() {
     _syncTimer?.cancel();
-    // Sondeo de perfil en segundo plano cada 3 segundos para reflejar ascensos o revocaciones de inmediato
     _syncTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       _syncProfile();
     });
