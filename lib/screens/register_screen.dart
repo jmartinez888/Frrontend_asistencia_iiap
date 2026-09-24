@@ -391,14 +391,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     AppTextField(
                       controller: _emailController,
                       label: 'Correo Electrónico',
-                      hint: 'Escribe tu correo (debe terminar en .com)',
+                      hint: 'ejemplo@iiap.gob.pe o correo personal',
                       prefixIcon: Icons.email_outlined,
                       keyboardType: TextInputType.emailAddress,
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'El correo es obligatorio';
                         final clean = v.trim();
-                        if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[cC][oO][mM]$').hasMatch(clean)) {
-                          return 'Ingresa un correo válido que termine en .com';
+                        final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                        if (!emailRegex.hasMatch(clean)) {
+                          return 'Ingresa un correo electrónico válido';
                         }
                         return null;
                       },

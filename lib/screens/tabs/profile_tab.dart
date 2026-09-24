@@ -759,7 +759,7 @@ class _ProfileTabState extends State<ProfileTab> {
                       controller: newEmailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
-                        hintText: 'Ingresa tu nuevo correo (@...com)',
+                        hintText: 'Ingresa tu nuevo correo electrónico',
                         prefixIcon: const Icon(Icons.alternate_email_rounded, size: 20),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -888,7 +888,7 @@ class _ProfileTabState extends State<ProfileTab> {
                             setModalState(() => currentError = 'Ingresa el nuevo correo electrónico.');
                             return;
                           }
-                          final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                          final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
                           if (!emailRegex.hasMatch(newEmail)) {
                             setModalState(() => currentError = 'Ingresa un correo electrónico válido.');
                             return;

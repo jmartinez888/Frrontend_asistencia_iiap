@@ -219,12 +219,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     AppTextField(
                       controller: _identifierController,
                       label: 'Correo Electrónico o DNI',
-                      hint: 'ejemplo@iiap.com o 8 dígitos',
+                      hint: 'ejemplo@iiap.gob.pe o 8 dígitos',
                       prefixIcon: Icons.email_outlined,
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Ingresa tu correo electrónico (.com) o DNI';
+                          return 'Ingresa tu correo electrónico o DNI';
                         }
                         final clean = value.trim();
                         final isOnlyDigits = RegExp(r'^\d+$').hasMatch(clean);
@@ -234,8 +234,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           }
                           return null;
                         }
-                        if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[cC][oO][mM]$').hasMatch(clean)) {
-                          return 'Ingresa un correo válido que termine en .com';
+                        final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                        if (!emailRegex.hasMatch(clean)) {
+                          return 'Ingresa un correo electrónico válido o DNI';
                         }
                         return null;
                       },
