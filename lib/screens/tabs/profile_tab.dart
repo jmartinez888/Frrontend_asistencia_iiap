@@ -43,6 +43,23 @@ class _ProfileTabState extends State<ProfileTab> {
     _documentController = TextEditingController(text: user?.documentNumber ?? '');
     _phoneController = TextEditingController(text: user?.phoneNumber ?? '');
     _documentType = _detectDocumentType(user?.documentNumber);
+    _refreshProfile();
+  }
+
+  Future<void> _refreshProfile() async {
+    try {
+      final freshUser = await AuthService.getProfile();
+      if (mounted) {
+        if (!_isEditingInstitutionalInfo) {
+          _officeController.text = freshUser.office;
+          _areaController.text = freshUser.area;
+          _documentController.text = freshUser.documentNumber ?? '';
+          _phoneController.text = freshUser.phoneNumber ?? '';
+          _documentType = _detectDocumentType(freshUser.documentNumber);
+          setState(() {});
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -125,11 +142,14 @@ class _ProfileTabState extends State<ProfileTab> {
     setState(() => _isSavingInstitutionalInfo = true);
 
     try {
+      final finalDoc = newDoc.isNotEmpty ? newDoc : (user.documentNumber ?? '');
+      final finalPhone = newPhone.isNotEmpty ? newPhone : (user.phoneNumber ?? '');
+
       final updatedUser = user.copyWith(
         position: newOffice.isEmpty ? null : newOffice,
         department: newArea.isEmpty ? null : newArea,
-        documentNumber: newDoc.isEmpty ? null : newDoc,
-        phoneNumber: newPhone.isEmpty ? null : newPhone,
+        documentNumber: finalDoc.isEmpty ? null : finalDoc,
+        phoneNumber: finalPhone.isEmpty ? null : finalPhone,
       );
 
       // 1. Guardar y refrescar de inmediato en el almacenamiento y sesión local
@@ -140,8 +160,8 @@ class _ProfileTabState extends State<ProfileTab> {
         final profileData = <String, dynamic>{
           'position': newOffice,
           'department': newArea,
-          'document_number': newDoc.isEmpty ? null : newDoc,
-          'phone_number': newPhone.isEmpty ? null : newPhone,
+          if (finalDoc.isNotEmpty) 'document_number': finalDoc,
+          if (finalPhone.isNotEmpty) 'phone_number': finalPhone,
         };
         final updatedFromApi = await UsersService.updateProfile(profileData);
         await StorageService.updateCurrentUser(updatedFromApi);
