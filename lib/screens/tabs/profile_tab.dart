@@ -1022,22 +1022,19 @@ class _ProfileTabState extends State<ProfileTab> {
 
                           try {
                             final res = await AuthService.requestEmailChange(newEmail);
-                            if (res['direct_success'] == true) {
-                              if (context.mounted) {
-                                Navigator.of(ctx).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('¡Correo actualizado con éxito a $newEmail!'),
-                                    backgroundColor: ThemeService.primaryColor(context),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              }
-                            } else {
-                              setModalState(() {
-                                step = 2;
-                                isSubmitting = false;
-                              });
+                            setModalState(() {
+                              step = 2;
+                              isSubmitting = false;
+                            });
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(res['message']?.toString() ?? 'Código de 6 dígitos enviado a $newEmail. Revisa tu correo.'),
+                                  backgroundColor: ThemeService.primaryColor(context),
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: const Duration(seconds: 4),
+                                ),
+                              );
                             }
                           } catch (e) {
                             setModalState(() {
@@ -1066,10 +1063,13 @@ class _ProfileTabState extends State<ProfileTab> {
 
                             if (context.mounted) {
                               Navigator.of(ctx).pop();
+                              setState(() {});
+                              _refreshProfile();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text('¡Correo actualizado con éxito a ${updated.email}!'),
                                   backgroundColor: Colors.green,
+                                  behavior: SnackBarBehavior.floating,
                                 ),
                               );
                             }

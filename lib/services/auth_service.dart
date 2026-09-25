@@ -2,7 +2,6 @@ import '../config/api_config.dart';
 import '../models/user_model.dart';
 import 'api_client.dart';
 import 'storage_service.dart';
-import 'users_service.dart';
 
 class AuthService {
   static Future<UserModel> login({
@@ -97,91 +96,21 @@ class AuthService {
       requiresAuth: false,
     );
     return response['message']?.toString() ?? 'Contraseña actualizada exitosamente.';
-  }  /// 1. Solicitar código OTP o actualizar directamente el correo
+  }  /// 1. Solicitar código OTP para cambio de correo electrónico
   static Future<Map<String, dynamic>> requestEmailChange(String newEmail) async {
     final cleanEmail = newEmail.trim().toLowerCase();
-    final currentUser = StorageService.currentUser;
-    final userId = currentUser?.id ?? '';
 
-    // 1. Intentar actualización directa de correo via PATCH /api/users/me
-    try {
-      final updatedUser = await UsersService.updateProfile({
-        'email': cleanEmail,
-      });
+    final response = await ApiClient.post(
+      '${ApiConfig.baseUrl}/auth/request-email-change',
+      body: {
+        'new_email': cleanEmail,
+      },
+    );
 
-      // Asegurar que el objeto de sesión refleje el nuevo correo
-      final finalUser = updatedUser.email.isNotEmpty
-          ? updatedUser
-          : (currentUser?.copyWith(email: cleanEmail) ?? updatedUser);
-      await StorageService.updateCurrentUser(finalUser);
-
-      return {
-        'direct_success': true,
-        'user': finalUser,
-        'message': 'Correo electrónico actualizado correctamente.',
-      };
-    } catch (e1) {
-      // 1.5. Intentar actualización via PATCH /api/users/:id con email
-      if (userId.isNotEmpty) {
-        try {
-          final updatedUser = await UsersService.updateUser(userId, {
-            'email': cleanEmail,
-          });
-          final finalUser = updatedUser.email.isNotEmpty
-              ? updatedUser
-              : (currentUser?.copyWith(email: cleanEmail) ?? updatedUser);
-          await StorageService.updateCurrentUser(finalUser);
-
-          return {
-            'direct_success': true,
-            'user': finalUser,
-            'message': 'Correo electrónico actualizado correctamente.',
-          };
-        } catch (_) {}
-      }
-
-      // 2. Si PATCH /users/me no permite email directo, intentar POST /auth/request-email-change
-      try {
-        final response = await ApiClient.post(
-          '${ApiConfig.baseUrl}/auth/request-email-change',
-          body: {
-            'new_email': cleanEmail,
-            'email': cleanEmail,
-          },
-        );
-        return {
-          'direct_success': false,
-          'message': response['message']?.toString() ?? 'Código de verificación enviado al nuevo correo.',
-        };
-      } catch (e2) {
-        // 3. Intentar POST /api/users/me/email
-        try {
-          final response = await ApiClient.post(
-            '${ApiConfig.baseUrl}/users/me/email',
-            body: {
-              'email': cleanEmail,
-              'new_email': cleanEmail,
-            },
-          );
-          return {
-            'direct_success': false,
-            'message': response['message']?.toString() ?? 'Código de verificación enviado al nuevo correo.',
-          };
-        } catch (_) {
-          // 4. Si el backend no soporta cambiar email directo ni enviar OTP, actualizar sesión localmente
-          if (currentUser != null) {
-            final finalUser = currentUser.copyWith(email: cleanEmail);
-            await StorageService.updateCurrentUser(finalUser);
-            return {
-              'direct_success': true,
-              'user': finalUser,
-              'message': 'Correo electrónico actualizado correctamente.',
-            };
-          }
-          rethrow;
-        }
-      }
-    }
+    return {
+      'direct_success': false,
+      'message': response['message']?.toString() ?? 'Código de verificación de 6 dígitos enviado al nuevo correo.',
+    };
   }
 
   /// 2. Confirmar cambio de correo electrónico con código de 6 dígitos
@@ -190,51 +119,21 @@ class AuthService {
     required String code,
   }) async {
     final cleanEmail = newEmail.trim().toLowerCase();
-    dynamic response;
 
-    try {
-      response = await ApiClient.post(
-        '${ApiConfig.baseUrl}/auth/confirm-email-change',
-        body: {
-          'new_email': cleanEmail,
-          'email': cleanEmail,
-          'code': code.trim(),
-        },
-      );
-    } catch (e1) {
-      try {
-        response = await ApiClient.post(
-          '${ApiConfig.baseUrl}/users/me/email/confirm',
-          body: {
-            'email': cleanEmail,
-            'code': code.trim(),
-          },
-        );
-      } catch (e2) {
-        try {
-          response = await ApiClient.patch(
-            ApiConfig.usersMe,
-            body: {
-              'email': cleanEmail,
-              'code': code.trim(),
-            },
-          );
-        } catch (_) {
-          final currentUser = StorageService.currentUser;
-          if (currentUser != null) {
-            final finalUser = currentUser.copyWith(email: cleanEmail);
-            await StorageService.updateCurrentUser(finalUser);
-            return finalUser;
-          }
-          rethrow;
-        }
-      }
-    }
+    final response = await ApiClient.post(
+      '${ApiConfig.baseUrl}/auth/confirm-email-change',
+      body: {
+        'new_email': cleanEmail,
+        'code': code.trim(),
+      },
+    );
 
     final data = response as Map<String, dynamic>;
     final userMap = (data['user'] is Map) ? (data['user'] as Map<String, dynamic>) : data;
     final updatedUser = UserModel.fromJson(userMap);
-    final finalUser = updatedUser.email.isNotEmpty ? updatedUser : (StorageService.currentUser?.copyWith(email: cleanEmail) ?? updatedUser);
+    final finalUser = updatedUser.email.isNotEmpty
+        ? updatedUser
+        : (StorageService.currentUser?.copyWith(email: cleanEmail) ?? updatedUser);
 
     if (data['access_token'] != null) {
       await StorageService.saveSession(
