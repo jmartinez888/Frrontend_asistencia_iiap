@@ -43,6 +43,10 @@ class UserModel {
   final bool isVerified;
   final bool isActive;
   final DateTime? createdAt;
+  final bool customScheduleEnabled;
+  final String? customCheckIn;
+  final String? customCheckOut;
+  final int customToleranceMinutes;
 
   UserModel({
     required this.id,
@@ -57,6 +61,10 @@ class UserModel {
     this.isVerified = true,
     this.isActive = true,
     this.createdAt,
+    this.customScheduleEnabled = false,
+    this.customCheckIn,
+    this.customCheckOut,
+    this.customToleranceMinutes = 30,
   });
 
   bool get isAdmin => role == UserRole.ADMIN;
@@ -105,6 +113,10 @@ class UserModel {
       isVerified: json['is_verified'] == true,
       isActive: json['is_active'] != false,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
+      customScheduleEnabled: json['custom_schedule_enabled'] == true,
+      customCheckIn: json['custom_check_in']?.toString() ?? '08:00',
+      customCheckOut: json['custom_check_out']?.toString() ?? '17:00',
+      customToleranceMinutes: (json['custom_tolerance_minutes'] as num?)?.toInt() ?? 30,
     );
   }
 
@@ -122,6 +134,10 @@ class UserModel {
       'is_verified': isVerified,
       'is_active': isActive,
       'created_at': createdAt?.toIso8601String(),
+      'custom_schedule_enabled': customScheduleEnabled,
+      'custom_check_in': customCheckIn,
+      'custom_check_out': customCheckOut,
+      'custom_tolerance_minutes': customToleranceMinutes,
     };
   }
 
@@ -138,6 +154,10 @@ class UserModel {
     bool? isVerified,
     bool? isActive,
     DateTime? createdAt,
+    bool? customScheduleEnabled,
+    String? customCheckIn,
+    String? customCheckOut,
+    int? customToleranceMinutes,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -152,6 +172,10 @@ class UserModel {
       isVerified: isVerified ?? this.isVerified,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
+      customScheduleEnabled: customScheduleEnabled ?? this.customScheduleEnabled,
+      customCheckIn: customCheckIn ?? this.customCheckIn,
+      customCheckOut: customCheckOut ?? this.customCheckOut,
+      customToleranceMinutes: customToleranceMinutes ?? this.customToleranceMinutes,
     );
   }
 }

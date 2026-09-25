@@ -34,7 +34,7 @@ class AttendanceCard extends StatelessWidget {
     // Horario y evaluación dinámica asignada al usuario
     final schedule = ScheduleService.getSchedule(record.userId);
     final evaluation = schedule.evaluateAttendance(record.timestamp, isCheckIn);
-    final isPunctual = evaluation.isPunctual;
+    final isPunctual = isCheckIn ? (record.status == AttendanceStatus.ON_TIME) : true;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -337,7 +337,7 @@ class AttendanceCard extends StatelessWidget {
   }
 
   void _showDetailModal(BuildContext context, ScheduleModel schedule, ScheduleEvaluation evaluation, bool isDark) {
-    final isPunctual = evaluation.isPunctual;
+    final isPunctual = record.type == AttendanceType.CHECK_IN ? (record.status == AttendanceStatus.ON_TIME) : true;
 
     showModalBottomSheet(
       context: context,

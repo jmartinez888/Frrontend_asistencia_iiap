@@ -450,7 +450,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
   }
 
   void _openScheduleDialog(UserModel user) {
-    final currentSchedule = ScheduleService.getSchedule(user.id, position: user.position);
+    final currentSchedule = ScheduleService.getSchedule(user.id, user: user);
     ScheduleType selectedType = currentSchedule.type;
     int checkInH = currentSchedule.checkInHour;
     int checkInM = currentSchedule.checkInMinute;
@@ -1098,7 +1098,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
 
                           return Column(
                             children: filteredUsers.map((u) {
-                              final schedule = ScheduleService.getSchedule(u.id, position: u.position);
+                              final schedule = ScheduleService.getSchedule(u.id, user: u);
                               final badgeBg = _getScheduleBadgeBg(schedule.type, isDark);
                               final badgeTextColor = _getScheduleBadgeTextColor(schedule.type, isDark);
 

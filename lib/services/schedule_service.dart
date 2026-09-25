@@ -1,3 +1,4 @@
+import '../models/user_model.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,22 +32,37 @@ class ScheduleService {
     schedulesNotifier.value = map;
   }
 
-  /// Obtiene el horario asignado a un usuario
-  static ScheduleModel getSchedule(String userId, {String? position}) {
-    if (schedulesNotifier.value.containsKey(userId)) {
-      return schedulesNotifier.value[userId]!;
+  /// Obtiene el horario asignado a un usuario (leyendo del servidor o memoria)
+  static ScheduleModel getSchedule(String userId, {UserModel? user, String? position}) {
+    // 1. Si se pasó el usuario y tiene horario personalizado configurado en PostgreSQL:
+    if (user != null && user.customScheduleEnabled && user.customCheckIn != null) {
+      final inParts = user.customCheckIn!.split(':');
+      final outParts = (user.customCheckOut ?? '17:00').split(':');
+      final inH = int.tryParse(inParts.isNotEmpty ? inParts[0] : '8') ?? 8;
+      final inM = int.tryParse(inParts.length > 1 ? inParts[1] : '0') ?? 0;
+      final outH = int.tryParse(outParts.isNotEmpty ? outParts[0] : '17') ?? 17;
+      final outM = int.tryParse(outParts.length > 1 ? outParts[1] : '0') ?? 0;
+
+      return ScheduleModel(
+        userId: userId,
+        type: ScheduleType.personalizado,
+        checkInHour: inH,
+        checkInMinute: inM,
+        checkOutHour: outH,
+        checkOutMinute: outM,
+        toleranceMinutes: user.customToleranceMinutes,
+      );
     }
 
-    // Intentar inferir de la posición guardada en la base de datos
-    final fromPos = ScheduleModel.tryParseFromPosition(userId, position);
-    if (fromPos != null) {
-      return fromPos;
+    // 2. Si ya está cargado en el notificador reactivo:
+    if (schedulesNotifier.value.containsKey(userId)) {
+      return schedulesNotifier.value[userId]!;
     }
 
     return ScheduleModel.defaultGeneral(userId);
   }
 
-  /// Guarda el horario del usuario localmente y en el servidor
+  /// Guarda el horario del usuario localmente y en la base de datos real del servidor
   static Future<void> saveSchedule(ScheduleModel schedule) async {
     final prefs = await SharedPreferences.getInstance();
     final jsonStr = jsonEncode(schedule.toJson());
@@ -57,11 +73,20 @@ class ScheduleService {
     updated[schedule.userId] = schedule;
     schedulesNotifier.value = updated;
 
-    // Sincronizar con el backend en el campo position
+    // Sincronizar con el backend en la base de datos real de PostgreSQL
+    final isCustom = schedule.type == ScheduleType.personalizado;
+    final checkInStr = '${schedule.checkInHour.toString().padLeft(2, '0')}:${schedule.checkInMinute.toString().padLeft(2, '0')}';
+    final checkOutStr = '${schedule.checkOutHour.toString().padLeft(2, '0')}:${schedule.checkOutMinute.toString().padLeft(2, '0')}';
+
     try {
       await UsersService.updateUser(
         schedule.userId,
-        {'position': schedule.toCompactPositionString()},
+        {
+          'custom_schedule_enabled': isCustom,
+          'custom_check_in': checkInStr,
+          'custom_check_out': checkOutStr,
+          'custom_tolerance_minutes': schedule.toleranceMinutes,
+        },
       );
     } catch (_) {
       // Si falla la red se mantendrá guardado localmente de forma segura
