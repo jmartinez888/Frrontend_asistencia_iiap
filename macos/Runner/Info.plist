@@ -28,5 +28,9 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Se requiere acceso a la cámara para escanear el código QR de registro de asistencia.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Se requiere acceso a tu ubicación para validar la presencia en la sede del IIAP.</string>
 </dict>
 </plist>

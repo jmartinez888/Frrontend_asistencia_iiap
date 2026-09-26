@@ -66,5 +66,22 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Permisos para Cámara y Escáner QR -->
+	<key>NSCameraUsageDescription</key>
+	<string>Se requiere acceso a la cámara para escanear el código QR de registro de asistencia.</string>
+
+	<!-- Permisos para Geolocalización (Geolocator) -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Se requiere acceso a tu ubicación para validar la presencia dentro del rango permitido del IIAP.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Se requiere acceso a tu ubicación para validar la presencia en la sede del IIAP.</string>
+
+	<!-- Permisos para Galería de Fotos (Image Picker) -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Se requiere acceso a la galería para personalizar tu foto de perfil o fondos de pantalla.</string>
+
+	<!-- Permisos para Biometría / Face ID (Local Auth) -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>Se requiere autenticación biométrica para verificar tu identidad de forma segura.</string>
 </dict>
 </plist>

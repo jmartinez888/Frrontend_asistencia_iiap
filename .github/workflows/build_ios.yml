@@ -1,0 +1,59 @@
+name: Compilar para Apple (iPhone, iPad y Mac)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-apple:
+    name: Compilar para iOS y macOS
+    runs-on: macos-14
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.7'
+          channel: 'stable'
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # --- COMPILACIÓN PARA IPHONE E IPAD ---
+      - name: Compilar App para iOS (sin firma previa)
+        run: flutter build ios --release --no-codesign
+
+      - name: Crear archivo IPA para iPhone / iPad
+        run: |
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -r control_asistencia.ipa Payload
+          rm -rf Payload
+
+      - name: Subir IPA de iOS (iPhone / iPad)
+        uses: actions/upload-artifact@v4
+        with:
+          name: control_asistencia_ios_ipa
+          path: control_asistencia.ipa
+          retention-days: 7
+
+      # --- COMPILACIÓN PARA MAC ---
+      - name: Compilar App para macOS
+        run: flutter build macos --release
+
+      - name: Comprimir App de macOS
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r ../../../../../control_asistencia_macos.zip *.app
+
+      - name: Subir App para macOS
+        uses: actions/upload-artifact@v4
+        with:
+          name: control_asistencia_macos
+          path: control_asistencia_macos.zip
+          retention-days: 7
