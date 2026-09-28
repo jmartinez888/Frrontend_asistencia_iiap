@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../services/theme_service.dart';
 
 class OperaGxThemePicker extends StatelessWidget {
@@ -54,10 +54,9 @@ class OperaGxThemePicker extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 14),
-
-            // Carrusel de tarjetas cyberpunk estilo Opera GX
+            // Carrusel de tarjetas cyberpunk estilo Opera GX
             SizedBox(
-              height: 148,
+              height: 156,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
@@ -73,36 +72,46 @@ class OperaGxThemePicker extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Tarjeta Opera GX con Wireframe y Glow
+                        // Tarjeta llena y resaltada con el color del tema
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 250),
-                          width: 102,
+                          width: 104,
                           height: 114,
                           decoration: BoxDecoration(
-                            color: isDark
-                                ? (isSelected ? item.darkCardBg : const Color(0xFF141420))
-                                : (isSelected ? item.lightContainer.withValues(alpha: 0.5) : const Color(0xFFF1F5F9)),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: isDark
+                                  ? [
+                                      itemColor.withValues(alpha: isSelected ? 0.38 : 0.22),
+                                      item.darkContainer.withValues(alpha: isSelected ? 0.85 : 0.60),
+                                      item.darkCardBg,
+                                    ]
+                                  : [
+                                      item.lightContainer,
+                                      itemColor.withValues(alpha: isSelected ? 0.38 : 0.20),
+                                      Colors.white,
+                                    ],
+                            ),
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(
                               color: isSelected
                                   ? itemColor
-                                  : (isDark ? const Color(0xFF262638) : const Color(0xFFCBD5E1)),
-                              width: isSelected ? 2.5 : 1.2,
+                                  : itemColor.withValues(alpha: isDark ? 0.70 : 0.55),
+                              width: isSelected ? 2.5 : 1.5,
                             ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: itemColor.withValues(alpha: isDark ? 0.6 : 0.4),
-                                      blurRadius: 14,
-                                      spreadRadius: 1,
-                                    ),
-                                  ]
-                                : null,
+                            boxShadow: [
+                              BoxShadow(
+                                color: itemColor.withValues(alpha: isSelected ? (isDark ? 0.65 : 0.45) : (isDark ? 0.22 : 0.12)),
+                                blurRadius: isSelected ? 16 : 8,
+                                spreadRadius: isSelected ? 1.5 : 0,
+                              ),
+                            ],
                           ),
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
-                              // Marco decorativo cyberpunk interno
+                              // Marco decorativo cyberpunk interno con color temático
                               Positioned.fill(
                                 child: Padding(
                                   padding: const EdgeInsets.all(7),
@@ -110,9 +119,7 @@ class OperaGxThemePicker extends StatelessWidget {
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: isSelected
-                                            ? itemColor.withValues(alpha: 0.35)
-                                            : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+                                        color: itemColor.withValues(alpha: isSelected ? 0.50 : 0.28),
                                         width: 1,
                                       ),
                                     ),
@@ -120,29 +127,31 @@ class OperaGxThemePicker extends StatelessWidget {
                                 ),
                               ),
 
-                              // Contenido del mockup interior
+                              // Contenido del mockup interior lleno del color del tema
                               Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  // Logo anillo Opera GX
+                                  // Logo anillo Opera GX con el color del tema
                                   Container(
                                     width: 38,
                                     height: 38,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
+                                      color: itemColor.withValues(alpha: isSelected ? 0.22 : 0.14),
                                       border: Border.all(
-                                        color: isSelected ? itemColor : (isDark ? const Color(0xFF475569) : const Color(0xFF94A3B8)),
+                                        color: itemColor,
                                         width: 2.5,
                                       ),
                                     ),
                                     child: Center(
                                       child: Container(
-                                        width: 20,
-                                        height: 20,
+                                        width: 18,
+                                        height: 18,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
+                                          color: itemColor.withValues(alpha: isSelected ? 0.45 : 0.28),
                                           border: Border.all(
-                                            color: isSelected ? itemColor : (isDark ? const Color(0xFF475569) : const Color(0xFF94A3B8)),
+                                            color: itemColor,
                                             width: 2,
                                           ),
                                         ),
@@ -151,20 +160,18 @@ class OperaGxThemePicker extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 10),
 
-                                  // Barra simulada de búsqueda/nav
+                                  // Barra simulada de búsqueda/nav coloreada
                                   Container(
                                     width: 58,
                                     height: 5,
                                     decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? itemColor.withValues(alpha: 0.3)
-                                          : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                                      color: itemColor.withValues(alpha: isSelected ? 0.70 : 0.50),
                                       borderRadius: BorderRadius.circular(3),
                                     ),
                                   ),
                                   const SizedBox(height: 6),
 
-                                  // Cuadrículas de Speed Dial simuladas (4 cuadritos)
+                                  // Cuadrículas simuladas llenas de color
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: List.generate(
@@ -174,9 +181,7 @@ class OperaGxThemePicker extends StatelessWidget {
                                         width: 10,
                                         height: 10,
                                         decoration: BoxDecoration(
-                                          color: isSelected
-                                              ? itemColor.withValues(alpha: 0.35)
-                                              : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                                          color: itemColor.withValues(alpha: isSelected ? 0.75 : 0.55),
                                           borderRadius: BorderRadius.circular(2.5),
                                         ),
                                       ),
@@ -184,21 +189,75 @@ class OperaGxThemePicker extends StatelessWidget {
                                   ),
                                 ],
                               ),
+
+                              // Badge circular de confirmación cuando está seleccionado
+                              if (isSelected)
+                                Positioned(
+                                  top: 7,
+                                  right: 7,
+                                  child: Container(
+                                    width: 18,
+                                    height: 18,
+                                    decoration: BoxDecoration(
+                                      color: itemColor,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: itemColor.withValues(alpha: 0.8),
+                                          blurRadius: 6,
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.check,
+                                      size: 12,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
                         const SizedBox(height: 8),
 
-                        // Nombre tech en mayúsculas
+                        // Nombre tech en mayúsculas con su propio color
                         Text(
                           item.displayName,
                           style: TextStyle(
                             fontSize: 10.5,
-                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
                             letterSpacing: 0.6,
                             color: isSelected
                                 ? (isDark ? Colors.white : item.lightPrimary)
-                                : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                : (isDark ? itemColor.withValues(alpha: 0.90) : item.lightPrimary),
+                            shadows: isSelected
+                                ? [
+                                    Shadow(
+                                      color: itemColor.withValues(alpha: 0.7),
+                                      blurRadius: 6,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+
+                        // Pequeña línea indicadora de tema activo
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: isSelected ? 22 : 0,
+                          height: 2.5,
+                          decoration: BoxDecoration(
+                            color: itemColor,
+                            borderRadius: BorderRadius.circular(2),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: itemColor.withValues(alpha: 0.8),
+                                      blurRadius: 4,
+                                    ),
+                                  ]
+                                : null,
                           ),
                         ),
                       ],
