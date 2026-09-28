@@ -226,6 +226,7 @@ class ThemeService {
   }
 
   static void setAccentColor(AppAccentColor color) {
+    if (accentColorNotifier.value == color) return;
     accentColorNotifier.value = color;
     _prefs?.setString(_keyAccentColor, color.id);
   }
