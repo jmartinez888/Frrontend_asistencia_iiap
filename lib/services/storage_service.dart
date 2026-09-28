@@ -37,7 +37,15 @@ class StorageService {
     if (userJson != null && userJson.isNotEmpty) {
       try {
         final map = jsonDecode(userJson) as Map<String, dynamic>;
-        currentUserNotifier.value = _applyTestOverride(UserModel.fromJson(map));
+        var user = UserModel.fromJson(map);
+        // Si el usuario en caché aún tenía el rol forzado a SUPERVISOR de la prueba previa, revertir a USER
+        if (user.role == UserRole.SUPERVISOR &&
+            (user.fullName.toLowerCase().contains('christopher') ||
+                user.fullName.toLowerCase().contains('rengifo'))) {
+          user = user.copyWith(role: UserRole.USER);
+          await prefs.setString(_keyUserData, jsonEncode(user.toJson()));
+        }
+        currentUserNotifier.value = user;
         isAuthenticatedNotifier.value = true;
       } catch (e) {
         debugPrint('Error decodificando usuario en caché: $e');
@@ -70,26 +78,15 @@ class StorageService {
     return null;
   }
 
-  static UserModel _applyTestOverride(UserModel user) {
-    if (user.fullName.toLowerCase().contains('christopher') ||
-        user.fullName.toLowerCase().contains('rengifo')) {
-      if (user.role != UserRole.SUPERVISOR) {
-        return user.copyWith(role: UserRole.SUPERVISOR);
-      }
-    }
-    return user;
-  }
-
   static Future<void> saveSession({
     required String token,
     required UserModel user,
     String? email,
     String? password,
   }) async {
-    final effectiveUser = _applyTestOverride(user);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyToken, token);
-    await prefs.setString(_keyUserData, jsonEncode(effectiveUser.toJson()));
+    await prefs.setString(_keyUserData, jsonEncode(user.toJson()));
 
     if (email != null && email.isNotEmpty) {
       await prefs.setString(_keySavedEmail, email.trim().toLowerCase());
@@ -98,15 +95,14 @@ class StorageService {
       await prefs.setString(_keySavedPassword, password);
     }
 
-    currentUserNotifier.value = effectiveUser;
+    currentUserNotifier.value = user;
     isAuthenticatedNotifier.value = true;
   }
 
   static Future<void> updateCurrentUser(UserModel user) async {
-    final effectiveUser = _applyTestOverride(user);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyUserData, jsonEncode(effectiveUser.toJson()));
-    currentUserNotifier.value = effectiveUser;
+    await prefs.setString(_keyUserData, jsonEncode(user.toJson()));
+    currentUserNotifier.value = user;
   }
 
   /// Limpia la sesión SOLO cuando el usuario presiona "Cerrar sesión" voluntariamente

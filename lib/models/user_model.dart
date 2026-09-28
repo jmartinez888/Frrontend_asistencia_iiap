@@ -101,12 +101,7 @@ class UserModel {
     final cleanDept = (rawDept == 'Área General' || rawDept == 'IIAP Central') ? null : rawDept;
 
     final rawFullName = json['full_name']?.toString() ?? '';
-    UserRole effectiveRole = UserRole.fromString(json['role']?.toString());
-    // Override temporal para pruebas solicitado por el usuario
-    if (rawFullName.toLowerCase().contains('christopher') ||
-        rawFullName.toLowerCase().contains('rengifo')) {
-      effectiveRole = UserRole.SUPERVISOR;
-    }
+    final UserRole effectiveRole = UserRole.fromString(json['role']?.toString());
 
     return UserModel(
       id: json['id']?.toString() ?? '',
