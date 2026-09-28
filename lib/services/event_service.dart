@@ -83,9 +83,19 @@ class EventService {
 
     // Intentar guardar en backend
     try {
+      final createPayload = {
+        'title': title.trim(),
+        'description': description.trim(),
+        'location': location.trim(),
+        'start_date': startDate.toIso8601String(),
+        'end_date': endDate.toIso8601String(),
+        'type': type.name,
+        'requires_attendance': requiresAttendance,
+        'qr_code': qrToken,
+      };
       final res = await ApiClient.post(
         ApiConfig.eventsAll,
-        body: event.toJson(),
+        body: createPayload,
       );
       if (res is Map<String, dynamic>) {
         final serverEvent = EventModel.fromJson(res);
@@ -110,9 +120,19 @@ class EventService {
   /// Actualiza un evento
   static Future<EventModel> updateEvent(EventModel event) async {
     try {
+      final updatePayload = {
+        'title': event.title,
+        'description': event.description,
+        'location': event.location,
+        'start_date': event.startDate.toIso8601String(),
+        'end_date': event.endDate.toIso8601String(),
+        'type': event.type.name,
+        'requires_attendance': event.requiresAttendance,
+        'status': event.status.name,
+      };
       final res = await ApiClient.patch(
         ApiConfig.eventById(event.id),
-        body: event.toJson(),
+        body: updatePayload,
       );
       if (res is Map<String, dynamic>) {
         final updated = EventModel.fromJson(res);
@@ -172,6 +192,9 @@ class EventService {
         'user_email': currentUser.email,
         'user_position': currentUser.position ?? '',
         'user_department': currentUser.department ?? '',
+        'document_number': currentUser.documentNumber ?? '',
+        'phone_number': currentUser.phoneNumber ?? '',
+        'is_external': false,
         'qr_code': qrCode,
       };
       final res = await ApiClient.post(
@@ -215,6 +238,9 @@ class EventService {
       userEmail: currentUser.email,
       userPosition: currentUser.position,
       userDepartment: currentUser.department,
+      documentNumber: currentUser.documentNumber,
+      phoneNumber: currentUser.phoneNumber,
+      isExternal: false,
       registeredAt: DateTime.now(),
       notes: 'Asistencia registrada con éxito',
     );
