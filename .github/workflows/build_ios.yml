@@ -48,7 +48,7 @@ jobs:
 
       - name: Firmar Ad-Hoc y Comprimir App de macOS
         run: |
-          codesign --force --deep --sign - build/macos/Build/Products/Release/control_asistencia.app
+          codesign --force --deep --sign - --entitlements macos/Runner/Release.entitlements build/macos/Build/Products/Release/control_asistencia.app
           ditto -c -k --sequesterRsrc --keepParent build/macos/Build/Products/Release/control_asistencia.app control_asistencia_macos.zip
 
       - name: Subir App para macOS
