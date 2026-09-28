@@ -7,19 +7,23 @@ import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
 import '../../services/storage_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/event_service.dart';
 import '../../widgets/app_button.dart';
 
 enum ScanTarget {
   attendance,
   supervisorPromotion,
+  eventAttendance,
 }
 
 class QrScannerScreen extends StatefulWidget {
   final ScanTarget target;
+  final String? eventId;
 
   const QrScannerScreen({
     super.key,
     this.target = ScanTarget.attendance,
+    this.eventId,
   });
 
   @override
@@ -52,6 +56,52 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     if (mounted) setState(() {});
 
     try {
+      // 0. Si el target es evento o el código es de un evento institucional IIAP (formato código o URL web)
+      final isEventCode = widget.target == ScanTarget.eventAttendance ||
+          cleanCode.startsWith('IIAP-EVT-') ||
+          cleanCode.contains('/events/registro') ||
+          (cleanCode.contains('events') && cleanCode.contains('id='));
+
+      if (isEventCode) {
+        String? targetEventId = widget.eventId;
+        if (targetEventId == null) {
+          if (cleanCode.startsWith('IIAP-EVT-')) {
+            final parts = cleanCode.split('-');
+            if (parts.length >= 3) {
+              targetEventId = parts[2];
+            }
+          } else if (cleanCode.contains('id=')) {
+            final uri = Uri.tryParse(cleanCode);
+            targetEventId = uri?.queryParameters['id'] ?? uri?.queryParameters['event_id'];
+          }
+        }
+        if (targetEventId == null) {
+          final events = EventService.eventsNotifier.value;
+          for (final ev in events) {
+            if (ev.qrCode == cleanCode || cleanCode.contains(ev.id)) {
+              targetEventId = ev.id;
+              break;
+            }
+          }
+        }
+
+        if (targetEventId != null) {
+          final updatedEvent = await EventService.registerAttendance(
+            eventId: targetEventId,
+            qrCode: cleanCode,
+          );
+          if (!mounted) return;
+          await _showSuccessDialog(
+            title: '¡Asistencia Registrada!',
+            message: 'Tu asistencia ha sido confirmada para "${updatedEvent.title}".',
+            detail: 'Participante: ${StorageService.currentUser?.fullName ?? ""}',
+            isShaVerified: true,
+          );
+          if (mounted) Navigator.of(context).pop(true);
+          return;
+        }
+      }
+
       // 1. Si el target es explícitamente supervisorPromotion
       if (widget.target == ScanTarget.supervisorPromotion) {
         final result = await AttendanceService.scanSupervisorQr(cleanCode);

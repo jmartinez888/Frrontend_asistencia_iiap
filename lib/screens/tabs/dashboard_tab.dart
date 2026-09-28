@@ -8,6 +8,11 @@ import '../../services/auth_service.dart';
 import '../../widgets/attendance_card.dart';
 import '../qr/qr_display_screen.dart';
 import '../qr/qr_scanner_screen.dart';
+import '../events/events_list_screen.dart';
+import '../events/create_event_screen.dart';
+import '../events/event_detail_screen.dart';
+import '../../services/event_service.dart';
+import '../../models/event_model.dart';
 import '../../services/theme_service.dart';
 import '../../services/connectivity_service.dart';
 
@@ -32,6 +37,7 @@ class _DashboardTabState extends State<DashboardTab> {
   void initState() {
     super.initState();
     _loadTodayAttendance();
+    EventService.getEvents();
   }
 
   Future<void> _loadTodayAttendance() async {
@@ -56,6 +62,8 @@ class _DashboardTabState extends State<DashboardTab> {
         }
       }
     } catch (_) {
+      // Ignorar errores transitorios
+    } finally {
       if (mounted) {
         setState(() => _isLoadingToday = false);
       }
@@ -145,7 +153,8 @@ class _DashboardTabState extends State<DashboardTab> {
 
     return ValueListenableBuilder<UserModel?>(
       valueListenable: StorageService.currentUserNotifier,
-      builder: (context, user, _) {
+      builder: (context, rawUser, _) {
+        final user = rawUser ?? StorageService.currentUser;
         if (user == null) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -159,6 +168,7 @@ class _DashboardTabState extends State<DashboardTab> {
             onRefresh: () async {
               await AuthService.getProfile();
               await _loadTodayAttendance();
+              await EventService.getEvents();
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -401,6 +411,11 @@ class _DashboardTabState extends State<DashboardTab> {
                   ],
                 ],
 
+                const SizedBox(height: 22),
+
+                // Sección Eventos Institucionales
+                _buildEventsSection(context, user),
+
                 const SizedBox(height: 24),
 
                 // Sección Asistencias:
@@ -626,6 +641,278 @@ class _DashboardTabState extends State<DashboardTab> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildEventsSection(BuildContext context, UserModel user) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final canCreate = user.canManageAttendanceQr;
+
+    return ValueListenableBuilder<List<EventModel>>(
+      valueListenable: EventService.eventsNotifier,
+      builder: (context, events, _) {
+        final activeOrUpcoming = events.where((e) => e.endDate.isAfter(DateTime.now()) || e.isActiveNow).toList();
+        final featuredEvent = activeOrUpcoming.isNotEmpty ? activeOrUpcoming.first : (events.isNotEmpty ? events.first : null);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(
+                        'Eventos Institucionales',
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (activeOrUpcoming.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: ThemeService.primaryColor(context).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${activeOrUpcoming.length}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: ThemeService.primaryColor(context),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const EventsListScreen()),
+                    );
+                  },
+                  child: const Text('Ver Todos', style: TextStyle(fontSize: 12.5)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            if (featuredEvent != null) ...[
+              InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => EventDetailScreen(event: featuredEvent),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: ThemeService.cardBg(context),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: featuredEvent.isActiveNow
+                          ? const Color(0xFF16A34A).withValues(alpha: 0.6)
+                          : ThemeService.cardBorder(context),
+                      width: featuredEvent.isActiveNow ? 1.5 : 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: ThemeService.primaryColor(context).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.event_note_rounded, size: 12, color: ThemeService.primaryColor(context)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  featuredEvent.type.displayName.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: ThemeService.primaryColor(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: featuredEvent.isActiveNow
+                                  ? const Color(0xFF16A34A).withValues(alpha: 0.15)
+                                  : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.circle,
+                                  size: 6,
+                                  color: featuredEvent.isActiveNow ? const Color(0xFF16A34A) : const Color(0xFF94A3B8),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  featuredEvent.isActiveNow ? 'En curso' : 'Próximo',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: featuredEvent.isActiveNow ? const Color(0xFF16A34A) : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        featuredEvent.title,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.location_on_outlined, size: 13, color: ThemeService.subtextColor(context)),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              featuredEvent.location,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: ThemeService.subtextColor(context),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${featuredEvent.attendees.length} registrados',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: ThemeService.primaryColor(context),
+                            ),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Ver detalle',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: ThemeService.subtextColor(context),
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              Icon(Icons.chevron_right_rounded, size: 15, color: ThemeService.subtextColor(context)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: ThemeService.cardBg(context),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: ThemeService.cardBorder(context)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.event_available_rounded, size: 26, color: ThemeService.primaryColor(context)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'No hay eventos programados en este momento.',
+                        style: TextStyle(fontSize: 12.5, color: ThemeService.subtextColor(context)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            if (canCreate) ...[
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  side: BorderSide(
+                    color: ThemeService.primaryColor(context).withValues(alpha: 0.5),
+                  ),
+                ),
+                onPressed: () async {
+                  final created = await Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CreateEventScreen()),
+                  );
+                  if (created == true) {
+                    EventService.getEvents();
+                  }
+                },
+                icon: Icon(Icons.add_circle_outline_rounded, size: 18, color: ThemeService.primaryColor(context)),
+                label: Text(
+                  'Crear Nuevo Evento Institucional',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.bold,
+                    color: ThemeService.primaryColor(context),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }

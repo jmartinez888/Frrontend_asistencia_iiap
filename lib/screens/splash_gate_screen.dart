@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/storage_service.dart';
@@ -21,33 +22,29 @@ class _SplashGateScreenState extends State<SplashGateScreen> {
   }
 
   Future<void> _checkAuth() async {
-    // Pausa breve y óptima para una transición instantánea y fluida
-    await Future.delayed(const Duration(milliseconds: 350));
+    // Pausa breve para una transición visual impecable
+    await Future.delayed(const Duration(milliseconds: 300));
 
-    final token = await StorageService.getToken();
     final user = StorageService.currentUser;
+    final token = await StorageService.getToken();
 
-    // 1. Si la cuenta ya está iniciada (token y perfil guardados), entrar de inmediato al Home
-    if (token != null && token.isNotEmpty && user != null) {
+    // SESIÓN PERMANENTE (Estilo redes sociales):
+    // Si el usuario ya tiene sesión iniciada, entra SIEMPRE Y DIRECTAMENTE al Home.
+    // Nunca se le pide volver a loguearse por inactividad o tiempo transcurrido.
+    if (user != null || (token != null && token.isNotEmpty)) {
       if (mounted) {
         _navigateTo(const HomeScreen());
       }
+      // De forma transparente y no bloqueante en segundo plano, refrescar datos
+      unawaited(() async {
+        try {
+          await AuthService.getProfile();
+        } catch (_) {}
+      }());
       return;
     }
 
-    // 2. Si hay token guardado pero falta el usuario en caché, sincronizar perfil
-    if (token != null && token.isNotEmpty) {
-      try {
-        await AuthService.getProfile();
-        if (mounted) {
-          _navigateTo(const HomeScreen());
-          return;
-        }
-      } catch (_) {
-        // Si el token falló o expiró, continuará al login
-      }
-    }
-
+    // Solo si el usuario nunca ha iniciado sesión o cerró sesión voluntariamente, va al login
     if (mounted) {
       _navigateTo(const LoginScreen());
     }

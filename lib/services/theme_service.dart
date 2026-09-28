@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum AppAccentColor {
@@ -258,5 +258,10 @@ class ThemeService {
   static List<Color> bannerGradient(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return currentAccent.gradientOf(isDark);
+  }
+
+  static Color subtextColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
   }
 }

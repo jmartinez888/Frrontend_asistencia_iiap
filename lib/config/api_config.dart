@@ -62,5 +62,20 @@ class ApiConfig {
   static String get attendanceAll => '$baseUrl/attendance/all';
   static String get attendancePendingCheckouts => '$baseUrl/attendance/pending-checkouts';
   static String get attendanceWeeklyReset => '$baseUrl/attendance/weekly-reset';
+
+  // Rutas de Eventos
+  static String get eventsAll => '$baseUrl/events';
+  static String eventById(String id) => '$baseUrl/events/$id';
+  static String eventRegisterAttendance(String id) => '$baseUrl/events/$id/attendance';
+  static String eventGenerateQr(String id) => '$baseUrl/events/$id/qr';
+  static String eventAttendees(String id) => '$baseUrl/events/$id/attendees';
+
+  /// URL web pública para que cualquier persona sin la app escanee con la cámara de su celular
+  static String eventPublicRegistrationUrl(String eventId) {
+    // Si la URL base es https://dev-api-control.iiap.gob.pe/api
+    // Genera https://dev-api-control.iiap.gob.pe/events/registro?id=...
+    final domain = baseUrl.replaceAll(RegExp(r'/api/?$'), '');
+    return '$domain/registro.html?id=$eventId';
+  }
 }
 

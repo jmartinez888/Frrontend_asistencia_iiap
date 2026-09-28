@@ -48,6 +48,7 @@ class MyApp extends StatelessWidget {
         final accent = ThemeService.currentAccent;
         final hasWallpaper = WallpaperService.currentWallpaper.hasWallpaper;
         return MaterialApp(
+          navigatorKey: StorageService.navigatorKey,
           title: 'IIAP Asistencia',
           debugShowCheckedModeBanner: false,
           themeAnimationDuration: Duration.zero,

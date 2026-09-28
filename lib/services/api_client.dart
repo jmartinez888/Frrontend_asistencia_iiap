@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'auth_service.dart';
 import 'storage_service.dart';
 
 class ApiException implements Exception {
@@ -52,12 +53,7 @@ class ApiClient {
       }
     }
 
-    if (response.statusCode == 401) {
-      // Sesión expirada o token inválido
-      StorageService.clearSession();
-      throw ApiException(errorMessage.isNotEmpty ? errorMessage : 'Sesión expirada. Por favor inicie sesión nuevamente.', 401);
-    }
-
+    // NUNCA cerramos sesión automáticamente por un 401. La cuenta del usuario se preserva siempre (estilo redes sociales).
     throw ApiException(errorMessage, response.statusCode);
   }
 
@@ -67,6 +63,19 @@ class ApiClient {
       final response = await http
           .get(Uri.parse(url), headers: headers)
           .timeout(const Duration(seconds: 15));
+
+      // Si el token expiró, re-autenticar de fondo silenciosamente y reintentar 1 vez
+      if (response.statusCode == 401 && requiresAuth) {
+        final reauthenticated = await AuthService.trySilentRelogin();
+        if (reauthenticated) {
+          final retryHeaders = await _headers(requiresAuth: requiresAuth);
+          final retryResponse = await http
+              .get(Uri.parse(url), headers: retryHeaders)
+              .timeout(const Duration(seconds: 15));
+          return _processResponse(retryResponse);
+        }
+      }
+
       return _processResponse(response);
     } on SocketException {
       throw ApiException('No se pudo conectar con el servidor backend. Verifique que esté encendido.');
@@ -85,6 +94,23 @@ class ApiClient {
             body: body != null ? jsonEncode(body) : null,
           )
           .timeout(const Duration(seconds: 15));
+
+      // Si el token expiró, re-autenticar de fondo silenciosamente y reintentar 1 vez
+      if (response.statusCode == 401 && requiresAuth) {
+        final reauthenticated = await AuthService.trySilentRelogin();
+        if (reauthenticated) {
+          final retryHeaders = await _headers(requiresAuth: requiresAuth);
+          final retryResponse = await http
+              .post(
+                Uri.parse(url),
+                headers: retryHeaders,
+                body: body != null ? jsonEncode(body) : null,
+              )
+              .timeout(const Duration(seconds: 15));
+          return _processResponse(retryResponse);
+        }
+      }
+
       return _processResponse(response);
     } on SocketException {
       throw ApiException('No se pudo conectar con el servidor backend. Verifique que esté encendido.');
@@ -103,6 +129,23 @@ class ApiClient {
             body: body != null ? jsonEncode(body) : null,
           )
           .timeout(const Duration(seconds: 15));
+
+      // Si el token expiró, re-autenticar de fondo silenciosamente y reintentar 1 vez
+      if (response.statusCode == 401 && requiresAuth) {
+        final reauthenticated = await AuthService.trySilentRelogin();
+        if (reauthenticated) {
+          final retryHeaders = await _headers(requiresAuth: requiresAuth);
+          final retryResponse = await http
+              .patch(
+                Uri.parse(url),
+                headers: retryHeaders,
+                body: body != null ? jsonEncode(body) : null,
+              )
+              .timeout(const Duration(seconds: 15));
+          return _processResponse(retryResponse);
+        }
+      }
+
       return _processResponse(response);
     } on SocketException {
       throw ApiException('No se pudo conectar con el servidor backend. Verifique que esté encendido.');
@@ -121,6 +164,23 @@ class ApiClient {
             body: body != null ? jsonEncode(body) : null,
           )
           .timeout(const Duration(seconds: 15));
+
+      // Si el token expiró, re-autenticar de fondo silenciosamente y reintentar 1 vez
+      if (response.statusCode == 401 && requiresAuth) {
+        final reauthenticated = await AuthService.trySilentRelogin();
+        if (reauthenticated) {
+          final retryHeaders = await _headers(requiresAuth: requiresAuth);
+          final retryResponse = await http
+              .delete(
+                Uri.parse(url),
+                headers: retryHeaders,
+                body: body != null ? jsonEncode(body) : null,
+              )
+              .timeout(const Duration(seconds: 15));
+          return _processResponse(retryResponse);
+        }
+      }
+
       return _processResponse(response);
     } on SocketException {
       throw ApiException('No se pudo conectar con el servidor backend. Verifique que esté encendido.');

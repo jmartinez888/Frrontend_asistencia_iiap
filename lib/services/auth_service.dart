@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
 import '../models/user_model.dart';
 import 'api_client.dart';
@@ -21,7 +22,12 @@ class AuthService {
     final userJson = response['user'] as Map<String, dynamic>;
     final user = UserModel.fromJson(userJson);
 
-    await StorageService.saveSession(token: token, user: user);
+    await StorageService.saveSession(
+      token: token,
+      user: user,
+      email: email,
+      password: password,
+    );
     return user;
   }
 
@@ -55,8 +61,56 @@ class AuthService {
     final userJson = response['user'] as Map<String, dynamic>;
     final user = UserModel.fromJson(userJson);
 
-    await StorageService.saveSession(token: token, user: user);
+    await StorageService.saveSession(
+      token: token,
+      user: user,
+      email: email,
+      password: password,
+    );
     return user;
+  }
+
+  static bool _isSilentLoggingIn = false;
+
+  /// Re-autentica de forma transparente en segundo plano si el token expiró (estilo redes sociales)
+  static Future<bool> trySilentRelogin() async {
+    if (_isSilentLoggingIn) return false;
+    _isSilentLoggingIn = true;
+    try {
+      final creds = await StorageService.getSavedCredentials();
+      if (creds == null) return false;
+
+      final email = creds['email'];
+      final password = creds['password'];
+      if (email == null || password == null) return false;
+
+      final response = await ApiClient.post(
+        ApiConfig.authLogin,
+        body: {
+          'email': email.trim().toLowerCase(),
+          'password': password,
+        },
+        requiresAuth: false,
+      );
+
+      final token = response['access_token']?.toString() ?? '';
+      final userJson = response['user'] as Map<String, dynamic>;
+      final user = UserModel.fromJson(userJson);
+
+      await StorageService.saveSession(
+        token: token,
+        user: user,
+        email: email,
+        password: password,
+      );
+      debugPrint('Sesión revalidada silenciosamente con éxito');
+      return true;
+    } catch (e) {
+      debugPrint('Re-autenticación silenciosa en espera de conexión: $e');
+      return false;
+    } finally {
+      _isSilentLoggingIn = false;
+    }
   }
 
   static Future<UserModel> getProfile() async {
@@ -96,7 +150,9 @@ class AuthService {
       requiresAuth: false,
     );
     return response['message']?.toString() ?? 'Contraseña actualizada exitosamente.';
-  }  /// 1. Solicitar código OTP para cambio de correo electrónico
+  }
+
+  /// 1. Solicitar código OTP para cambio de correo electrónico
   static Future<Map<String, dynamic>> requestEmailChange(String newEmail) async {
     final cleanEmail = newEmail.trim().toLowerCase();
 
@@ -202,7 +258,7 @@ class AuthService {
       throw ApiException(errorMsg);
     }
 
-    // Solo si el servidor confirmó la eliminación física/lógica en la BD, cerramos la sesión local
+    // Solo si el servidor confirmó la eliminación en la BD, cerramos la sesión local
     await StorageService.clearSession();
     if (response is Map<String, dynamic>) {
       return response['message']?.toString() ?? 'Tu cuenta ha sido eliminada con éxito de la base de datos.';
@@ -287,6 +343,20 @@ class AuthService {
           }
           rethrow;
         }
+      }
+    }
+
+    // Actualizar la contraseña guardada para mantener el auto-relogin al día
+    final creds = await StorageService.getSavedCredentials();
+    if (creds != null && currentUser != null) {
+      final token = await StorageService.getToken();
+      if (token != null) {
+        await StorageService.saveSession(
+          token: token,
+          user: currentUser,
+          email: creds['email'],
+          password: newPassword,
+        );
       }
     }
 

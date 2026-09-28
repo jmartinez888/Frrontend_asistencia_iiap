@@ -40,14 +40,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _startSyncTimer();
       _syncProfile();
       NotificationService.checkAndTriggerCheckoutReminder();
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _syncTimer?.cancel();
     }
   }
 
   void _startSyncTimer() {
     _syncTimer?.cancel();
-    _syncTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    // Intervalo saludable de 45 segundos para sincronizar rol y estado sin saturar
+    _syncTimer = Timer.periodic(const Duration(seconds: 45), (_) {
       _syncProfile();
     });
   }
@@ -114,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         );
       }
     } catch (_) {
-      // Silencioso ante pérdidas transitorias de conectividad
+      // Silencioso: la sesión se mantiene intacta bajo cualquier circunstancia
     } finally {
       _isSyncing = false;
     }
@@ -122,12 +126,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-
     return ValueListenableBuilder<UserModel?>(
       valueListenable: StorageService.currentUserNotifier,
       builder: (context, user, _) {
-        final isAdmin = user?.isAdmin == true;
-        final canManageStaff = user?.canManageAttendanceQr == true;
+        final currentUser = user ?? StorageService.currentUser;
+        final isAdmin = currentUser?.isAdmin == true;
+        final canManageStaff = currentUser?.canManageAttendanceQr == true;
 
         final List<Widget> pages = [
           DashboardTab(onNavigateToHistory: () => setState(() => _currentIndex = 1)),
@@ -160,7 +164,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ];
 
-        // Asegurar que el indice no sobrepase si cambia el rol
+        // Asegurar que el índice no sobrepase si cambia el rol
         final safeIndex = _currentIndex >= pages.length ? 0 : _currentIndex;
 
         return Scaffold(
@@ -181,4 +185,3 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 }
-
