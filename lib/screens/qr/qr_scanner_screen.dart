@@ -9,6 +9,7 @@ import '../../services/storage_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/event_service.dart';
 import '../../widgets/app_button.dart';
+import '../login_screen.dart';
 
 enum ScanTarget {
   attendance,
@@ -376,6 +377,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   }
 
   Future<void> _showErrorDialog(String error) async {
+    final isUnauthorized = error.toLowerCase().contains('unauthorized') || error.contains('401');
+
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -386,19 +389,59 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             color: Color(0xFFFEE2E2),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 40),
-        ),
-        title: const Text('No se pudo procesar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-        content: Text(error, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)),
-        actions: [
-          Center(
-            child: AppButton(
-              text: 'Reintentar',
-              width: 130,
-              height: 42,
-              onPressed: () => Navigator.of(ctx).pop(),
-            ),
+          child: Icon(
+            isUnauthorized ? Icons.lock_person_rounded : Icons.error_outline_rounded,
+            color: const Color(0xFFEF4444),
+            size: 40,
           ),
+        ),
+        title: Text(
+          isUnauthorized ? 'Sesión o Dispositivo no Autorizado' : 'No se pudo procesar',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+        ),
+        content: Text(
+          isUnauthorized
+              ? 'La sesión en este celular requiere revalidación de credenciales para registrar asistencias.'
+              : error,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 13),
+        ),
+        actions: [
+          if (isUnauthorized)
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('Cancelar'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: AppButton(
+                    text: 'Iniciar Sesión',
+                    height: 40,
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        (route) => false,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            )
+          else
+            Center(
+              child: AppButton(
+                text: 'Reintentar',
+                width: 130,
+                height: 42,
+                onPressed: () => Navigator.of(ctx).pop(),
+              ),
+            ),
         ],
       ),
     );
