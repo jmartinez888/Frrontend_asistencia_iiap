@@ -44,7 +44,9 @@ class ApiClient {
     }
 
     String errorMessage = 'Ocurrió un error en el servidor (${response.statusCode})';
-    if (body is Map && body.containsKey('message')) {
+    if (response.statusCode == 401) {
+      errorMessage = 'Sesión no autorizada o expirada. Inicia sesión nuevamente.';
+    } else if (body is Map && body.containsKey('message')) {
       final msg = body['message'];
       if (msg is List) {
         errorMessage = msg.join('\n');
