@@ -196,6 +196,7 @@ class EventService {
         'phone_number': currentUser.phoneNumber ?? '',
         'is_external': false,
         'qr_code': qrCode,
+        'registered_at': DateTime.now().toUtc().toIso8601String(),
       };
       final res = await ApiClient.post(
         ApiConfig.eventRegisterAttendance(eventId),
