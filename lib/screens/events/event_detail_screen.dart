@@ -58,6 +58,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     return '$day $month $year, ${hour.toString().padLeft(2, '0')}:$minute $ampm';
   }
 
+  String _formatAttendeeTime(DateTime date) {
+    final local = date.toLocal();
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final ampm = local.hour >= 12 ? 'p. m.' : 'a. m.';
+    return '${hour.toString().padLeft(2, '0')}:$minute $ampm';
+  }
+
   Future<void> _handleScanAttendance() async {
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
@@ -637,16 +645,31 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF16A34A).withValues(alpha: 0.1),
+                                color: const Color(0xFF16A34A).withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                '${attendee.registeredAt.hour.toString().padLeft(2, '0')}:${attendee.registeredAt.minute.toString().padLeft(2, '0')}',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF16A34A),
+                                border: Border.all(
+                                  color: const Color(0xFF16A34A).withValues(alpha: 0.25),
+                                  width: 0.8,
                                 ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.access_time_rounded,
+                                    size: 11,
+                                    color: Color(0xFF16A34A),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _formatAttendeeTime(attendee.registeredAt),
+                                    style: const TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF16A34A),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
