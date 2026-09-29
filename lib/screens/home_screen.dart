@@ -9,6 +9,7 @@ import 'tabs/supervisors_tab.dart';
 import 'tabs/profile_tab.dart';
 import '../services/theme_service.dart';
 import '../services/notification_service.dart';
+import '../utils/responsive.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -166,7 +167,116 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         // Asegurar que el índice no sobrepase si cambia el rol
         final safeIndex = _currentIndex >= pages.length ? 0 : _currentIndex;
+        final isDesktop = Responsive.isDesktop(context);
+        final isDark = Theme.of(context).brightness == Brightness.dark;
 
+        // VISTA ESCRITORIO (Windows, macOS, Web, Pantallas anchas): Sidebar lateral NavigationRail
+        if (isDesktop) {
+          return Scaffold(
+            body: Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: safeIndex,
+                  onDestinationSelected: (index) => setState(() => _currentIndex = index),
+                  backgroundColor: ThemeService.cardBg(context),
+                  indicatorColor: ThemeService.containerColor(context),
+                  extended: Responsive.isWideScreen(context),
+                  minExtendedWidth: 210,
+                  elevation: 1,
+                  leading: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 20, 12, 16),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: ThemeService.primaryColor(context).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.fingerprint_rounded,
+                            color: ThemeService.primaryColor(context),
+                            size: 26,
+                          ),
+                        ),
+                        if (Responsive.isWideScreen(context)) ...[
+                          const SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'IIAP Asistencia',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                ),
+                              ),
+                              Text(
+                                currentUser?.fullName ?? '',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF64748B),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  destinations: destinations.map((d) {
+                    return NavigationRailDestination(
+                      icon: d.icon,
+                      selectedIcon: d.selectedIcon ?? d.icon,
+                      label: Text(
+                        d.label,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                    );
+                  }).toList(),
+                  trailing: Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: Tooltip(
+                          message: currentUser?.fullName ?? '',
+                          child: CircleAvatar(
+                            radius: 17,
+                            backgroundColor: ThemeService.primaryColor(context),
+                            child: Text(
+                              (currentUser?.fullName.isNotEmpty == true ? currentUser!.fullName[0] : 'U').toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const VerticalDivider(thickness: 1, width: 1),
+                Expanded(
+                  child: IndexedStack(
+                    index: safeIndex,
+                    children: pages,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // VISTA MÓVIL (Celulares): BottomNavigationBar estándar
         return Scaffold(
           body: IndexedStack(
             index: safeIndex,

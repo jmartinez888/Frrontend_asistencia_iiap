@@ -147,6 +147,356 @@ class _DashboardTabState extends State<DashboardTab> {
   }
 
   @override
+  Widget _buildGreetingCard(BuildContext context, UserModel user, Color roleColor, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: ThemeService.bannerGradient(context),
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: ThemeService.primaryColor(context).withValues(alpha: isDark ? 0.2 : 0.25),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: roleColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: roleColor.withValues(alpha: 0.6)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        user.isAdmin
+                            ? Icons.admin_panel_settings_rounded
+                            : (user.isSupervisor ? Icons.security_rounded : Icons.person_rounded),
+                        color: Colors.white,
+                        size: 13,
+                      ),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          _getRoleShortName(user.role),
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ValueListenableBuilder<bool>(
+                valueListenable: ConnectivityService.isOnlineNotifier,
+                builder: (context, isOnline, _) {
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isOnline
+                          ? Colors.white.withValues(alpha: 0.15)
+                          : const Color(0xFFEF4444).withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isOnline
+                            ? Colors.white.withValues(alpha: 0.2)
+                            : const Color(0xFFEF4444).withValues(alpha: 0.5),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.circle,
+                          color: isOnline ? const Color(0xFF4ADE80) : const Color(0xFFF87171),
+                          size: 7,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isOnline ? 'En línea' : 'Desconectado',
+                          style: TextStyle(
+                            color: isOnline ? Colors.white : const Color(0xFFFEE2E2),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Hola, ${user.fullName}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 19,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _getUserSubtitle(user),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 12.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionCards(BuildContext context, UserModel user) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Control de Asistencia',
+                style: TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.lock_outline_rounded, size: 12, color: Color(0xFF2563EB)),
+                  SizedBox(width: 4),
+                  Text(
+                    'SHA-256',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2563EB),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (user.isSupervisor && (Responsive.isTablet(context) || Responsive.isDesktop(context))) ...[
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionCard(
+                  context,
+                  title: 'Generar QR',
+                  subtitle: 'Emisión con cifrado SHA-256 (Rotación)',
+                  icon: Icons.qr_code_2_rounded,
+                  color: const Color(0xFF16A34A),
+                  badgeText: 'SHA-256',
+                  badgeColor: const Color(0xFF16A34A),
+                  isLocked: false,
+                  onTap: () => _handleGenerarQr(context, user),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildActionCard(
+                  context,
+                  title: 'Escanear QR',
+                  subtitle: 'Registra tu asistencia con el QR institucional',
+                  icon: Icons.qr_code_scanner_rounded,
+                  color: const Color(0xFF2563EB),
+                  badgeText: 'CÁMARA',
+                  badgeColor: const Color(0xFF2563EB),
+                  isLocked: false,
+                  onTap: () => _handleEscanearQr(context),
+                ),
+              ),
+            ],
+          ),
+        ] else ...[
+          if (user.canManageAttendanceQr) ...[
+            _buildActionCard(
+              context,
+              title: 'Generar QR de Asistencia',
+              subtitle: 'Emisión institucional con cifrado SHA-256 (Rotación automática)',
+              icon: Icons.qr_code_2_rounded,
+              color: const Color(0xFF16A34A),
+              badgeText: 'SHA-256',
+              badgeColor: const Color(0xFF16A34A),
+              isLocked: false,
+              onTap: () => _handleGenerarQr(context, user),
+            ),
+            if (user.isSupervisor) const SizedBox(height: 12),
+          ],
+          if (!user.isAdmin) ...[
+            _buildActionCard(
+              context,
+              title: 'Escanear QR',
+              subtitle: 'Registra tu asistencia escaneando el código QR institucional',
+              icon: Icons.qr_code_scanner_rounded,
+              color: const Color(0xFF2563EB),
+              badgeText: 'CÁMARA',
+              badgeColor: const Color(0xFF2563EB),
+              isLocked: false,
+              onTap: () => _handleEscanearQr(context),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAttendanceSection(BuildContext context, UserModel user, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                user.isAdmin ? 'Marcas Institucionales Recientes' : 'Mis Marcas de Hoy',
+                style: TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              ),
+              onPressed: widget.onNavigateToHistory,
+              child: Text(
+                user.isAdmin ? 'Ver Registro Completo' : 'Ver Historial',
+                style: const TextStyle(fontSize: 12.5),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (_isLoadingToday)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (user.isAdmin)
+          if (_institutionalRecords.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: ThemeService.cardBg(context),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: ThemeService.cardBorder(context),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.corporate_fare_rounded,
+                    size: 38,
+                    color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Sin marcas registradas hoy',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Cuando los colaboradores escaneen el QR, sus asistencias se mostrarán aquí.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ..._institutionalRecords.map((r) => AttendanceCard(record: r, showUserName: true))
+        else if (_todayRecords.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: ThemeService.cardBg(context),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: ThemeService.cardBorder(context),
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.history_toggle_off_rounded,
+                  size: 38,
+                  color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Aún no has registrado asistencia hoy',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Presiona "Escanear QR" para registrar tu entrada.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ..._todayRecords.map((r) => AttendanceCard(record: r, showUserName: false)),
+      ],
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -162,6 +512,7 @@ class _DashboardTabState extends State<DashboardTab> {
         final roleColor = user.isAdmin
             ? const Color(0xFFDC2626)
             : (user.isSupervisor ? const Color(0xFFD97706) : const Color(0xFF16A34A));
+        final isDesktop = Responsive.isDesktop(context);
 
         return SafeArea(
           child: RefreshIndicator(
@@ -172,371 +523,59 @@ class _DashboardTabState extends State<DashboardTab> {
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
+              padding: EdgeInsets.symmetric(
+                horizontal: isDesktop ? 28 : 18,
+                vertical: isDesktop ? 22 : 14,
+              ),
               child: Responsive.constrained(
                 context,
                 maxTabletWidth: 920,
-                child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Tarjeta de Bienvenida y Rol
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: ThemeService.bannerGradient(context),
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: ThemeService.primaryColor(context).withValues(alpha: isDark ? 0.2 : 0.25),
-                        blurRadius: 14,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                maxDesktopWidth: 1350,
+                child: isDesktop
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Flexible(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: roleColor.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: roleColor.withValues(alpha: 0.6)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    user.isAdmin
-                                        ? Icons.admin_panel_settings_rounded
-                                        : (user.isSupervisor ? Icons.security_rounded : Icons.person_rounded),
-                                    color: Colors.white,
-                                    size: 13,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Flexible(
-                                    child: Text(
-                                      _getRoleShortName(user.role),
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                          // Columna Izquierda en Escritorio (48%)
+                          Expanded(
+                            flex: 5,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _buildGreetingCard(context, user, roleColor, isDark),
+                                const SizedBox(height: 20),
+                                _buildActionCards(context, user),
+                                const SizedBox(height: 20),
+                                _buildEventsSection(context, user),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          ValueListenableBuilder<bool>(
-                            valueListenable: ConnectivityService.isOnlineNotifier,
-                            builder: (context, isOnline, _) {
-                              return AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: isOnline
-                                      ? Colors.white.withValues(alpha: 0.15)
-                                      : const Color(0xFFEF4444).withValues(alpha: 0.25),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: isOnline
-                                        ? Colors.white.withValues(alpha: 0.2)
-                                        : const Color(0xFFEF4444).withValues(alpha: 0.5),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.circle,
-                                      color: isOnline ? const Color(0xFF4ADE80) : const Color(0xFFF87171),
-                                      size: 7,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      isOnline ? 'En línea' : 'Desconectado',
-                                      style: TextStyle(
-                                        color: isOnline ? Colors.white : const Color(0xFFFEE2E2),
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                          const SizedBox(width: 24),
+                          // Columna Derecha en Escritorio (52%)
+                          Expanded(
+                            flex: 5,
+                            child: _buildAttendanceSection(context, user, isDark),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        'Hola, ${user.fullName}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 19,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _getUserSubtitle(user),
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 22),
-
-                // Sección de Botones Principales: Generar QR y Escanear QR
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Control de Asistencia',
-                        style: TextStyle(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2563EB).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Icon(Icons.lock_outline_rounded, size: 12, color: Color(0xFF2563EB)),
-                          SizedBox(width: 4),
-                          Text(
-                            'SHA-256',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2563EB),
-                            ),
-                          ),
+                          _buildGreetingCard(context, user, roleColor, isDark),
+                          const SizedBox(height: 22),
+                          _buildActionCards(context, user),
+                          const SizedBox(height: 22),
+                          _buildEventsSection(context, user),
+                          const SizedBox(height: 24),
+                          _buildAttendanceSection(context, user, isDark),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // ACCIONES CONDICIONALES POR ROL:
-                // - Administrador: SOLO botón "Generar QR"
-                // - Supervisores: AMBOS botones ("Generar QR" y "Escanear QR" para marcar su propia asistencia)
-                // - Personal regular: SOLO botón "Escanear QR"
-                if (user.isSupervisor && Responsive.isTablet(context)) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildActionCard(
-                          context,
-                          title: 'Generar QR de Asistencia',
-                          subtitle: 'Emisión con cifrado SHA-256 (Rotación automática)',
-                          icon: Icons.qr_code_2_rounded,
-                          color: const Color(0xFF16A34A),
-                          badgeText: 'SHA-256',
-                          badgeColor: const Color(0xFF16A34A),
-                          isLocked: false,
-                          onTap: () => _handleGenerarQr(context, user),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: _buildActionCard(
-                          context,
-                          title: 'Escanear QR',
-                          subtitle: 'Registra tu asistencia escaneando el QR institucional',
-                          icon: Icons.qr_code_scanner_rounded,
-                          color: const Color(0xFF2563EB),
-                          badgeText: 'CÁMARA',
-                          badgeColor: const Color(0xFF2563EB),
-                          isLocked: false,
-                          onTap: () => _handleEscanearQr(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ] else ...[
-                  if (user.canManageAttendanceQr) ...[
-                    _buildActionCard(
-                      context,
-                      title: 'Generar QR de Asistencia',
-                      subtitle: 'Emisión institucional con cifrado SHA-256 (Rotación automática)',
-                      icon: Icons.qr_code_2_rounded,
-                      color: const Color(0xFF16A34A),
-                      badgeText: 'SHA-256',
-                      badgeColor: const Color(0xFF16A34A),
-                      isLocked: false,
-                      onTap: () => _handleGenerarQr(context, user),
-                    ),
-                    if (user.isSupervisor) const SizedBox(height: 12),
-                  ],
-                  if (!user.isAdmin) ...[
-                    _buildActionCard(
-                      context,
-                      title: 'Escanear QR',
-                      subtitle: 'Registra tu asistencia escaneando el código QR institucional',
-                      icon: Icons.qr_code_scanner_rounded,
-                      color: const Color(0xFF2563EB),
-                      badgeText: 'CÁMARA',
-                      badgeColor: const Color(0xFF2563EB),
-                      isLocked: false,
-                      onTap: () => _handleEscanearQr(context),
-                    ),
-                  ],
-                ],
-
-                const SizedBox(height: 22),
-
-                // Sección Eventos Institucionales
-                _buildEventsSection(context, user),
-
-                const SizedBox(height: 24),
-
-                // Sección Asistencias:
-                // Para el Administrador: Registro Institucional Reciente
-                // Para Personal / Supervisor: Mis Marcas de Hoy
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        user.isAdmin ? 'Marcas Institucionales Recientes' : 'Mis Marcas de Hoy',
-                        style: TextStyle(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      ),
-                      onPressed: widget.onNavigateToHistory,
-                      child: Text(
-                        user.isAdmin ? 'Ver Registro Completo' : 'Ver Historial',
-                        style: const TextStyle(fontSize: 12.5),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                if (_isLoadingToday)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (user.isAdmin)
-                  if (_institutionalRecords.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(22),
-                      decoration: BoxDecoration(
-                        color: ThemeService.cardBg(context),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: ThemeService.cardBorder(context),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.corporate_fare_rounded,
-                            size: 38,
-                            color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                          ),
-                          const SizedBox(height: 10),
-                          const Text(
-                            'Sin marcas registradas hoy',
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Cuando los colaboradores escaneen el QR, sus asistencias se mostrarán aquí.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    ..._institutionalRecords.map((r) => AttendanceCard(record: r, showUserName: true))
-                else if (_todayRecords.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      color: ThemeService.cardBg(context),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: ThemeService.cardBorder(context),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.history_toggle_off_rounded,
-                          size: 38,
-                          color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'Aún no has registrado asistencia hoy',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Presiona "Escanear QR" para registrar tu entrada.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  ..._todayRecords.map((r) => AttendanceCard(record: r, showUserName: false)),
-                ],
               ),
             ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   Widget _buildActionCard(
     BuildContext context, {
