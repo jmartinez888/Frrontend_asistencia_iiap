@@ -206,15 +206,26 @@ class EventService {
         _updateLocalList(updated);
         return updated;
       }
+    } on ApiException catch (e) {
+      // Propagar errores de validación de negocio del backend (ej: duplicados, evento cerrado, etc.)
+      if (e.statusCode == 400 || e.statusCode == 409 || e.statusCode == 403 || e.statusCode == 404) {
+        rethrow;
+      }
+      debugPrint('EventService: Backend reportó error de red/servidor, evaluando fallback local: $e');
     } catch (e) {
       debugPrint('EventService: Registro de asistencia en backend falló/no existe, procesando local: $e');
     }
 
     // 2. Fallback de registro local
-    final list = List<EventModel>.from(eventsNotifier.value);
-    final idx = list.indexWhere((e) => e.id == eventId);
+    var list = List<EventModel>.from(eventsNotifier.value);
+    var idx = list.indexWhere((e) => e.id == eventId);
     if (idx == -1) {
-      throw ApiException('El evento seleccionado no existe.');
+      await getEvents(forceRefresh: true);
+      list = List<EventModel>.from(eventsNotifier.value);
+      idx = list.indexWhere((e) => e.id == eventId);
+    }
+    if (idx == -1) {
+      throw ApiException('El evento seleccionado no existe o ya no está disponible.');
     }
 
     final targetEvent = list[idx];
@@ -226,7 +237,11 @@ class EventService {
 
     // Si requiere QR y se suministró un código, validar coincidencia básica
     if (targetEvent.requiresAttendance && qrCode != null && qrCode.isNotEmpty) {
-      if (targetEvent.qrCode != null && targetEvent.qrCode != qrCode && !qrCode.contains(targetEvent.id)) {
+      final matches = targetEvent.qrCode == null ||
+          targetEvent.qrCode == qrCode ||
+          qrCode.contains(targetEvent.id) ||
+          qrCode.contains('id=${targetEvent.id}');
+      if (!matches) {
         throw ApiException('El código QR no corresponde a este evento institucional.');
       }
     }

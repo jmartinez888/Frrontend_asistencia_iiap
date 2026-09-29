@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import '../../utils/responsive.dart';
 import 'package:geolocator/geolocator.dart';
@@ -32,16 +34,26 @@ class QrScannerScreen extends StatefulWidget {
 }
 
 class _QrScannerScreenState extends State<QrScannerScreen> {
-  final MobileScannerController _scannerController = MobileScannerController(
-    detectionSpeed: DetectionSpeed.noDuplicates,
-  );
+  MobileScannerController? _scannerController;
+  final TextEditingController _windowsInputCtrl = TextEditingController();
 
   bool _isProcessing = false;
   bool _torchEnabled = false;
 
   @override
+  void initState() {
+    super.initState();
+    if (!Platform.isWindows) {
+      _scannerController = MobileScannerController(
+        detectionSpeed: DetectionSpeed.noDuplicates,
+      );
+    }
+  }
+
+  @override
   void dispose() {
-    _scannerController.dispose();
+    _windowsInputCtrl.dispose();
+    _scannerController?.dispose();
     super.dispose();
   }
 
@@ -52,16 +64,27 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
     _isProcessing = true;
     try {
-      await _scannerController.stop();
+      await _scannerController?.stop();
     } catch (_) {}
     if (mounted) setState(() {});
 
     try {
-      // 0. Si el target es evento o el código es de un evento institucional IIAP (formato código o URL web)
-      final isEventCode = widget.target == ScanTarget.eventAttendance ||
+      // 0. Si el target es evento o el código es de un evento institucional IIAP (formato código, URL pública oficial o enlace web de registro)
+      final uri = Uri.tryParse(cleanCode);
+      final hasEventIdParam = uri != null &&
+          (uri.queryParameters.containsKey('id') || uri.queryParameters.containsKey('event_id'));
+      final isEventUrlOrCode = widget.target == ScanTarget.eventAttendance ||
           cleanCode.startsWith('IIAP-EVT-') ||
-          cleanCode.contains('/events/registro') ||
-          (cleanCode.contains('events') && cleanCode.contains('id='));
+          cleanCode.contains('registro.html') ||
+          cleanCode.contains('/registro') ||
+          cleanCode.contains('events') ||
+          (hasEventIdParam &&
+              (cleanCode.contains('iiap') ||
+                  cleanCode.contains('gob.pe') ||
+                  cleanCode.contains('localhost') ||
+                  cleanCode.contains('192.168')));
+
+      final isEventCode = isEventUrlOrCode;
 
       if (isEventCode) {
         String? targetEventId = widget.eventId;
@@ -71,15 +94,19 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             if (parts.length >= 3) {
               targetEventId = parts[2];
             }
-          } else if (cleanCode.contains('id=')) {
-            final uri = Uri.tryParse(cleanCode);
-            targetEventId = uri?.queryParameters['id'] ?? uri?.queryParameters['event_id'];
+          } else if (hasEventIdParam) {
+            targetEventId = uri.queryParameters['id'] ?? uri.queryParameters['event_id'];
           }
         }
         if (targetEventId == null) {
+          if (EventService.eventsNotifier.value.isEmpty) {
+            await EventService.getEvents();
+          }
           final events = EventService.eventsNotifier.value;
           for (final ev in events) {
-            if (ev.qrCode == cleanCode || cleanCode.contains(ev.id)) {
+            if (ev.qrCode == cleanCode ||
+                cleanCode.contains(ev.id) ||
+                (ev.qrCode != null && cleanCode.contains(ev.qrCode!))) {
               targetEventId = ev.id;
               break;
             }
@@ -93,13 +120,17 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
           );
           if (!mounted) return;
           await _showSuccessDialog(
-            title: '¡Asistencia Registrada!',
-            message: 'Tu asistencia ha sido confirmada para "${updatedEvent.title}".',
+            title: '¡Asistencia al Evento Confirmada!',
+            message: 'Tu asistencia ha sido registrada exitosamente para el evento institucional:\n"${updatedEvent.title}".',
             detail: 'Participante: ${StorageService.currentUser?.fullName ?? ""}',
             isShaVerified: true,
           );
           if (mounted) Navigator.of(context).pop(true);
           return;
+        } else if (widget.target == ScanTarget.eventAttendance || isEventUrlOrCode) {
+          throw ApiException(
+            'El código QR escaneado corresponde a un evento institucional, pero no se encontró un evento activo asociado o ya ha concluido.',
+          );
         }
       }
 
@@ -190,7 +221,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       await _showErrorDialog(e.message);
       if (mounted) {
         try {
-          await _scannerController.start();
+          await _scannerController?.start();
         } catch (_) {}
         setState(() => _isProcessing = false);
       }
@@ -199,7 +230,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       await _showErrorDialog('Error al procesar el código: $e');
       if (mounted) {
         try {
-          await _scannerController.start();
+          await _scannerController?.start();
         } catch (_) {}
         setState(() => _isProcessing = false);
       }
@@ -557,6 +588,112 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     final title = isAttendance ? 'Escanear QR de Asistencia' : 'Escanear Ascenso a Supervisor';
     final scanBoxSize = Responsive.isTablet(context) ? 360.0 : 260.0;
 
+    if (Platform.isWindows) {
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
+
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: AppBar(
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+        ),
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.qr_code_scanner_rounded,
+                          color: Color(0xFF16A34A),
+                          size: 48,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        isAttendance ? 'Registro de Asistencia' : 'Ascenso a Supervisor',
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'En Windows puedes registrar tu asistencia pegando el Hash SHA-256 o el enlace/código oficial del evento, o usando una lectora USB de códigos QR.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      TextField(
+                        controller: _windowsInputCtrl,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          hintText: 'Pega el código QR, Hash SHA o URL del evento aquí...',
+                          hintStyle: const TextStyle(fontSize: 12),
+                          filled: true,
+                          fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.paste_rounded),
+                            tooltip: 'Pegar del portapapeles',
+                            onPressed: () async {
+                              final data = await Clipboard.getData(Clipboard.kTextPlain);
+                              if (data?.text != null && data!.text!.isNotEmpty) {
+                                _windowsInputCtrl.text = data.text!.trim();
+                              }
+                            },
+                          ),
+                        ),
+                        onSubmitted: (val) {
+                          if (val.trim().isNotEmpty && !_isProcessing) {
+                            _handleBarcodeDetected(val.trim());
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: AppButton(
+                          text: _isProcessing ? 'Validando...' : 'Registrar Asistencia',
+                          isLoading: _isProcessing,
+                          onPressed: () {
+                            final code = _windowsInputCtrl.text.trim();
+                            if (code.isNotEmpty && !_isProcessing) {
+                              _handleBarcodeDetected(code);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -575,7 +712,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             tooltip: 'Linterna',
             onPressed: () {
               setState(() => _torchEnabled = !_torchEnabled);
-              _scannerController.toggleTorch();
+              _scannerController?.toggleTorch();
             },
           ),
           IconButton(
@@ -589,19 +726,20 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         alignment: Alignment.center,
         children: [
           // Vista de la cámara de escaneo
-          MobileScanner(
-            controller: _scannerController,
-            onDetect: (capture) {
-              final barcodes = capture.barcodes;
-              for (final barcode in barcodes) {
-                final rawValue = barcode.rawValue;
-                if (rawValue != null && rawValue.isNotEmpty) {
-                  _handleBarcodeDetected(rawValue);
-                  break;
+          if (_scannerController != null)
+            MobileScanner(
+              controller: _scannerController!,
+              onDetect: (capture) {
+                final barcodes = capture.barcodes;
+                for (final barcode in barcodes) {
+                  final rawValue = barcode.rawValue;
+                  if (rawValue != null && rawValue.isNotEmpty) {
+                    _handleBarcodeDetected(rawValue);
+                    break;
+                  }
                 }
-              }
-            },
-          ),
+              },
+            ),
 
           // Máscara y marco de encuadre visual del QR
           ColorFiltered(
