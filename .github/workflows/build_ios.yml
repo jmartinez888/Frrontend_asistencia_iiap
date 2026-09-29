@@ -3,7 +3,7 @@ name: Compilar para Apple (iPhone, iPad y Mac)
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master, frontend_development, Frontend_developer ]
+    branches: [ main, master, frontend_development, Frontend_developer, staging, feature/events-management ]
 
 jobs:
   build-apple:
@@ -46,10 +46,10 @@ jobs:
       - name: Compilar App para macOS
         run: flutter build macos --release
 
-      - name: Comprimir App de macOS
+      - name: Firmar Ad-Hoc y Comprimir App de macOS
         run: |
-          cd build/macos/Build/Products/Release
-          zip -r ../../../../../control_asistencia_macos.zip *.app
+          codesign --force --deep --sign - --entitlements macos/Runner/Release.entitlements build/macos/Build/Products/Release/control_asistencia.app
+          ditto -c -k --sequesterRsrc --keepParent build/macos/Build/Products/Release/control_asistencia.app control_asistencia_macos.zip
 
       - name: Subir App para macOS
         uses: actions/upload-artifact@v4

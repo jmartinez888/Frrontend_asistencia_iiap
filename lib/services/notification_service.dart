@@ -24,6 +24,7 @@ class NotificationService {
       const initSettings = InitializationSettings(
         android: androidSettings,
         iOS: darwinSettings,
+        macOS: darwinSettings,
       );
 
       await _notificationsPlugin.initialize(initSettings);
