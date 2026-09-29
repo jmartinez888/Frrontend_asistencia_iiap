@@ -3,7 +3,7 @@ name: Compilar para Apple (iPhone, iPad y Mac)
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master, staging, frontend_development, Frontend_developer, feature/events-management ]
+    branches: [ main, master, staging, frontend_development, Frontend_developer, feature/events-management, 'feature/**' ]
 
 jobs:
   build-apple:
