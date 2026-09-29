@@ -179,23 +179,24 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
     final primary = ThemeService.primaryColor(context);
 
     // Separar presets por categoría
-    // Nueva sección Fondos Oscuros AMOLED
-    final oscurosPresets = WallpaperService.presets
-        .where((p) => p.category == 'Fondos Oscuros')
+    final cyberPresets = WallpaperService.presets
+        .where((p) => p.category == 'Cyber & Hackers')
         .toList();
 
-    // Nueva seccion Animes (Inuyasha, Izumi Miyamura)
-    final animesPresets = WallpaperService.presets.where((p) => p.category == 'Animes').toList();
-
-    // Nueva seccion Fondos Rojos
-    final rojosPresets = WallpaperService.presets.where((p) => p.category == 'Rojos').toList();
-
-    final chicasPresets = WallpaperService.presets
-        .where((p) => p.category == 'Chicas')
+    final motorPresets = WallpaperService.presets
+        .where((p) => p.category == 'Superdeportivos & Motor')
         .toList();
 
-    final chicosPresets = WallpaperService.presets
-        .where((p) => p.category == 'Chicos & Gaming' || p.category == 'Institucional')
+    final futuristaPresets = WallpaperService.presets
+        .where((p) => p.category == 'Futurista & Mecha')
+        .toList();
+
+    final aventuraPresets = WallpaperService.presets
+        .where((p) => p.category == 'Aventura & Épico')
+        .toList();
+
+    final gamingPresets = WallpaperService.presets
+        .where((p) => p.category == 'Gaming & Estilo')
         .toList();
 
     return Scaffold(
@@ -274,7 +275,7 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
               child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // SECCIÓN: FONDOS OSCUROS & AMOLED (Cyber Matrix, Nebula Abyss, Carbon, Shadow Ronin)
+                // SECCIÓN: CYBER & HACKERS (AMOLED)
                 Row(
                   children: [
                     Container(
@@ -284,14 +285,14 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
-                        Icons.dark_mode_rounded,
+                        Icons.terminal_rounded,
                         color: Color(0xFF10B981),
                         size: 16,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'FONDOS OSCUROS & AMOLED',
+                      'CYBER & HACKERS (AMOLED)',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
@@ -306,10 +307,10 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                   height: 310,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    itemCount: oscurosPresets.length,
+                    itemCount: cyberPresets.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 14),
                     itemBuilder: (context, index) {
-                      final item = oscurosPresets[index];
+                      final item = cyberPresets[index];
                       final isSelected = activeWallpaper.id == item.id;
 
                       return _buildPresetCard(
@@ -324,57 +325,7 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
 
                 const SizedBox(height: 28),
 
-                // SECCION: ANIMES (Inuyasha, Izumi Miyamura)
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFA855F7).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.animation_rounded,
-                        color: Color(0xFFA855F7),
-                        size: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'COLECCIÓN ANIMES',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.5,
-                        color: isDark ? const Color(0xFFC084FC) : const Color(0xFF7E22CE),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  height: 310,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: animesPresets.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 14),
-                    itemBuilder: (context, index) {
-                      final item = animesPresets[index];
-                      final isSelected = activeWallpaper.id == item.id;
-
-                      return _buildPresetCard(
-                        item: item,
-                        isSelected: isSelected,
-                        primary: primary,
-                        onTap: () => WallpaperService.setPreset(item),
-                      );
-                    },
-                  ),
-                ),
-
-                const SizedBox(height: 28),
-
-                // SECCION: FONDOS ROJOS (Red Neon Cyber, Seda Rubi)
+                // SECCIÓN: SUPERDEPORTIVOS & MOTOR
                 Row(
                   children: [
                     Container(
@@ -384,14 +335,14 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
-                        Icons.local_fire_department_rounded,
+                        Icons.directions_car_filled_rounded,
                         color: Color(0xFFEF4444),
                         size: 16,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'COLECCIÓN ROJO & CYBER',
+                      'SUPERDEPORTIVOS & MOTOR',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
@@ -406,10 +357,10 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                   height: 310,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    itemCount: rojosPresets.length,
+                    itemCount: motorPresets.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 14),
                     itemBuilder: (context, index) {
-                      final item = rojosPresets[index];
+                      final item = motorPresets[index];
                       final isSelected = activeWallpaper.id == item.id;
 
                       return _buildPresetCard(
@@ -424,29 +375,29 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
 
                 const SizedBox(height: 28),
 
-                // SECCIÓN: CHICAS & ANIME CUTE (Pucca, Angela, Anime Chica, Sakura)
+                // SECCIÓN: FUTURISTA & MECHA
                 Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF2A85).withValues(alpha: 0.15),
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
-                        Icons.auto_awesome_rounded,
-                        color: Color(0xFFFF2A85),
+                        Icons.smart_toy_rounded,
+                        color: Color(0xFFF59E0B),
                         size: 16,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'COLECCIÓN CHICAS & ANIME',
+                      'FUTURISTA & MECHA',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.5,
-                        color: isDark ? const Color(0xFFF472B6) : const Color(0xFFDB2777),
+                        color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
                       ),
                     ),
                   ],
@@ -456,10 +407,10 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                   height: 310,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    itemCount: chicasPresets.length,
+                    itemCount: futuristaPresets.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 14),
                     itemBuilder: (context, index) {
-                      final item = chicasPresets[index];
+                      final item = futuristaPresets[index];
                       final isSelected = activeWallpaper.id == item.id;
 
                       return _buildPresetCard(
@@ -474,29 +425,29 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
 
                 const SizedBox(height: 28),
 
-                // SECCIÓN: CHICOS & GAMING (GX Neo, Ronin, Anime Hero, Selva IIAP)
+                // SECCIÓN: AVENTURA & ÉPICO
                 Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: primary.withValues(alpha: 0.15),
+                        color: const Color(0xFF0EA5E9).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(
-                        Icons.bolt_rounded,
-                        color: primary,
+                      child: const Icon(
+                        Icons.sailing_rounded,
+                        color: Color(0xFF0EA5E9),
                         size: 16,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'COLECCIÓN CHICOS & GAMING',
+                      'AVENTURA & ÉPICO',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.5,
-                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+                        color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
                       ),
                     ),
                   ],
@@ -506,10 +457,60 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
                   height: 310,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    itemCount: chicosPresets.length,
+                    itemCount: aventuraPresets.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 14),
                     itemBuilder: (context, index) {
-                      final item = chicosPresets[index];
+                      final item = aventuraPresets[index];
+                      final isSelected = activeWallpaper.id == item.id;
+
+                      return _buildPresetCard(
+                        item: item,
+                        isSelected: isSelected,
+                        primary: primary,
+                        onTap: () => WallpaperService.setPreset(item),
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // SECCIÓN: GAMING & ESTILO
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFA855F7).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.sports_esports_rounded,
+                        color: Color(0xFFA855F7),
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'GAMING & ESTILO',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                        color: isDark ? const Color(0xFFC084FC) : const Color(0xFF7E22CE),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 310,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: gamingPresets.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 14),
+                    itemBuilder: (context, index) {
+                      final item = gamingPresets[index];
                       final isSelected = activeWallpaper.id == item.id;
 
                       return _buildPresetCard(
