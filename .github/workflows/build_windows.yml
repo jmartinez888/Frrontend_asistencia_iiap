@@ -1,0 +1,39 @@
+name: Compilar para Windows (Desktop App)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master, frontend_development, Frontend_developer, staging, feature/events-management ]
+
+jobs:
+  build-windows:
+    name: Compilar para Windows Desktop (.exe)
+    runs-on: windows-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      - name: Compilar App para Windows Desktop
+        run: flutter build windows --release
+
+      - name: Comprimir paquete de Windows
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "control_asistencia_windows.zip" -Force
+
+      - name: Subir App para Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: control_asistencia_windows
+          path: control_asistencia_windows.zip
+          retention-days: 7
