@@ -923,7 +923,8 @@
           phone_number: phone.value.trim(),
           user_email: email.value.trim().toLowerCase(),
           is_external: true,
-          notes: 'Registro público web'
+          notes: 'Registro público web',
+          registered_at: new Date().toISOString()
         };
 
         const targetId = eventId || 'general';

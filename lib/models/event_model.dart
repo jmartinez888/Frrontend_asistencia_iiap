@@ -121,9 +121,9 @@ class EventAttendeeModel {
       phoneNumber: json['phone_number']?.toString() ?? json['phoneNumber']?.toString() ?? json['telefono']?.toString(),
       isExternal: json['is_external'] == true || json['isExternal'] == true,
       registeredAt: json['registered_at'] != null
-          ? DateTime.tryParse(json['registered_at'].toString()) ?? DateTime.now()
+          ? (DateTime.tryParse(json['registered_at'].toString())?.toLocal() ?? DateTime.now())
           : (json['registeredAt'] != null
-              ? DateTime.tryParse(json['registeredAt'].toString()) ?? DateTime.now()
+              ? (DateTime.tryParse(json['registeredAt'].toString())?.toLocal() ?? DateTime.now())
               : DateTime.now()),
       notes: json['notes']?.toString(),
     );
@@ -205,15 +205,15 @@ class EventModel {
     }
 
     final start = json['start_date'] != null
-        ? DateTime.tryParse(json['start_date'].toString()) ?? DateTime.now()
+        ? (DateTime.tryParse(json['start_date'].toString())?.toLocal() ?? DateTime.now())
         : (json['startDate'] != null
-            ? DateTime.tryParse(json['startDate'].toString()) ?? DateTime.now()
+            ? (DateTime.tryParse(json['startDate'].toString())?.toLocal() ?? DateTime.now())
             : DateTime.now());
 
     final end = json['end_date'] != null
-        ? DateTime.tryParse(json['end_date'].toString()) ?? start.add(const Duration(hours: 1))
+        ? (DateTime.tryParse(json['end_date'].toString())?.toLocal() ?? start.add(const Duration(hours: 1)))
         : (json['endDate'] != null
-            ? DateTime.tryParse(json['endDate'].toString()) ?? start.add(const Duration(hours: 1))
+            ? (DateTime.tryParse(json['endDate'].toString())?.toLocal() ?? start.add(const Duration(hours: 1)))
             : start.add(const Duration(hours: 1)));
 
     return EventModel(
@@ -230,9 +230,9 @@ class EventModel {
       createdByName: json['created_by_name']?.toString() ?? json['createdByName']?.toString() ?? 'Administrador',
       createdByRole: json['created_by_role']?.toString() ?? json['createdByRole']?.toString() ?? 'ADMIN',
       createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
+          ? (DateTime.tryParse(json['created_at'].toString())?.toLocal() ?? DateTime.now())
           : (json['createdAt'] != null
-              ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+              ? (DateTime.tryParse(json['createdAt'].toString())?.toLocal() ?? DateTime.now())
               : DateTime.now()),
       status: EventStatus.fromString(json['status']?.toString()),
       attendeesCount: (json['attendees_count'] as num?)?.toInt() ??
