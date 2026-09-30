@@ -7,6 +7,8 @@ import '../models/event_model.dart';
 import 'api_client.dart';
 import 'storage_service.dart';
 
+import 'notification_service.dart';
+
 class EventService {
   static const String _localEventsKey = 'local_stored_events_v1';
   static final ValueNotifier<List<EventModel>> eventsNotifier = ValueNotifier<List<EventModel>>([]);
@@ -25,6 +27,20 @@ class EventService {
         list.sort((a, b) => b.startDate.compareTo(a.startDate));
         eventsNotifier.value = list;
         await _saveToLocalCache(list);
+
+        // Programar recordatorios offline en el SO para eventos futuros
+        final now = DateTime.now();
+        for (final evt in list) {
+          if (evt.startDate.isAfter(now)) {
+            NotificationService.scheduleEventReminders(
+              eventId: evt.id,
+              title: evt.title,
+              location: evt.location,
+              startDate: evt.startDate,
+            );
+          }
+        }
+
         return list;
       }
     } catch (e) {
@@ -41,6 +57,19 @@ class EventService {
 
     cleanList.sort((a, b) => b.startDate.compareTo(a.startDate));
     eventsNotifier.value = cleanList;
+
+    final now = DateTime.now();
+    for (final evt in cleanList) {
+      if (evt.startDate.isAfter(now)) {
+        NotificationService.scheduleEventReminders(
+          eventId: evt.id,
+          title: evt.title,
+          location: evt.location,
+          startDate: evt.startDate,
+        );
+      }
+    }
+
     return cleanList;
   }
 
@@ -172,6 +201,150 @@ class EventService {
     list.removeWhere((e) => e.id == eventId);
     eventsNotifier.value = list;
     await _saveToLocalCache(list);
+  }
+
+  /// Elimina a un participante de un evento (Solo Administrador y Supervisor)
+  static Future<EventModel> removeAttendee({
+    required String eventId,
+    required String attendeeId,
+  }) async {
+    final currentUser = StorageService.currentUser;
+    if (currentUser == null || !currentUser.canManageAttendanceQr) {
+      throw ApiException('Solo Administradores y Supervisores pueden eliminar participantes.', 403);
+    }
+
+    // 1. Intentar llamada al backend
+    try {
+      final res = await ApiClient.delete(
+        ApiConfig.eventDeleteAttendee(eventId, attendeeId),
+      );
+      if (res is Map<String, dynamic>) {
+        final updated = EventModel.fromJson(res);
+        _updateLocalList(updated);
+        return updated;
+      }
+    } catch (e) {
+      debugPrint('EventService: Falló eliminación en backend, aplicando fallback local: $e');
+    }
+
+    // 2. Fallback de eliminación local
+    var list = List<EventModel>.from(eventsNotifier.value);
+    var idx = list.indexWhere((e) => e.id == eventId);
+    if (idx != -1) {
+      final targetEvent = list[idx];
+      final updatedAttendees = targetEvent.attendees
+          .where((a) => a.id != attendeeId && a.userId != attendeeId)
+          .toList();
+      final updatedEvent = targetEvent.copyWith(
+        attendees: updatedAttendees,
+        attendeesCount: updatedAttendees.length,
+      );
+      list[idx] = updatedEvent;
+      eventsNotifier.value = list;
+      await _saveToLocalCache(list);
+      return updatedEvent;
+    }
+
+    throw ApiException('No se encontró el evento para eliminar al participante.');
+  }
+
+  /// Registra manualmente a un participante en un evento (Solo Administrador y Supervisor)
+  static Future<EventModel> registerManualAttendee({
+    required String eventId,
+    required String fullName,
+    required String documentNumber,
+    required String phoneNumber,
+    required String email,
+    String? gender,
+    int? age,
+    String? career,
+    String? institution,
+    String? position,
+    String? notes,
+  }) async {
+    final currentUser = StorageService.currentUser;
+    if (currentUser == null || !currentUser.canManageAttendanceQr) {
+      throw ApiException('Solo Administradores y Supervisores pueden registrar participantes manualmente.', 403);
+    }
+
+    final body = {
+      'user_name': fullName.trim(),
+      'document_number': documentNumber.trim(),
+      'phone_number': phoneNumber.trim(),
+      'user_email': email.trim().toLowerCase(),
+      if (gender != null && gender.isNotEmpty) 'gender': gender.trim(),
+      if (age != null) 'age': age,
+      if (career != null && career.isNotEmpty) 'career': career.trim(),
+      if (institution != null && institution.isNotEmpty) 'institution': institution.trim(),
+      if (position != null && position.isNotEmpty) 'user_position': position.trim(),
+      if (notes != null && notes.isNotEmpty) 'notes': notes.trim(),
+      'is_external': true,
+      'registered_at': DateTime.now().toUtc().toIso8601String(),
+    };
+
+    // 1. Intentar en el backend
+    try {
+      final res = await ApiClient.post(
+        ApiConfig.eventRegisterAttendance(eventId),
+        body: body,
+      );
+      if (res is Map<String, dynamic>) {
+        final updated = EventModel.fromJson(res);
+        _updateLocalList(updated);
+        return updated;
+      }
+    } on ApiException catch (e) {
+      if (e.statusCode == 400 || e.statusCode == 409 || e.statusCode == 403 || e.statusCode == 404) {
+        rethrow;
+      }
+      debugPrint('EventService: Error de red al registrar asistente en backend: $e');
+    } catch (e) {
+      debugPrint('EventService: Fallback a registro manual local: $e');
+    }
+
+    // 2. Fallback local
+    var list = List<EventModel>.from(eventsNotifier.value);
+    var idx = list.indexWhere((e) => e.id == eventId);
+    if (idx != -1) {
+      final targetEvent = list[idx];
+      final docTrimmed = documentNumber.trim();
+      final emailTrimmed = email.trim().toLowerCase();
+      final exists = targetEvent.attendees.any(
+        (a) => (docTrimmed.isNotEmpty && a.documentNumber == docTrimmed) ||
+               (emailTrimmed.isNotEmpty && a.userEmail.toLowerCase() == emailTrimmed),
+      );
+      if (exists) {
+        throw ApiException('El participante ya se encuentra registrado con este DNI o correo.');
+      }
+
+      final newAtt = EventAttendeeModel(
+        id: 'att_manual_${DateTime.now().millisecondsSinceEpoch}',
+        userId: '',
+        userName: fullName.trim(),
+        userEmail: email.trim().toLowerCase(),
+        documentNumber: documentNumber.trim(),
+        phoneNumber: phoneNumber.trim(),
+        gender: gender?.trim(),
+        age: age,
+        career: career?.trim(),
+        institution: institution?.trim(),
+        userPosition: position?.trim(),
+        notes: notes?.trim() ?? 'Registro manual por Administrador',
+        isExternal: true,
+        registeredAt: DateTime.now(),
+      );
+      final updatedAttendees = List<EventAttendeeModel>.from(targetEvent.attendees)..insert(0, newAtt);
+      final updatedEvent = targetEvent.copyWith(
+        attendees: updatedAttendees,
+        attendeesCount: updatedAttendees.length,
+      );
+      list[idx] = updatedEvent;
+      eventsNotifier.value = list;
+      await _saveToLocalCache(list);
+      return updatedEvent;
+    }
+
+    throw ApiException('No se encontró el evento para registrar al participante.');
   }
 
   /// Registra la asistencia de un colaborador a un evento

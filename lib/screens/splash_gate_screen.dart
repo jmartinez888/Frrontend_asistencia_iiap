@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../widgets/leaf_logo.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
+import '../services/notification_service.dart';
 
 class SplashGateScreen extends StatefulWidget {
   const SplashGateScreen({super.key});
@@ -35,9 +36,10 @@ class _SplashGateScreenState extends State<SplashGateScreen> {
       if (mounted) {
         _navigateTo(const HomeScreen());
       }
-      // De forma transparente y no bloqueante en segundo plano, refrescar datos
+      // De forma transparente y no bloqueante en segundo plano, refrescar datos y alarmas offline
       unawaited(() async {
         try {
+          await NotificationService.scheduleAllAttendanceReminders();
           await AuthService.getProfile();
         } catch (_) {}
       }());
@@ -95,22 +97,32 @@ class _SplashGateScreenState extends State<SplashGateScreen> {
               children: [
                 // Logo central IIAP
                 Center(
-                  child: Row(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const LeafLogo(
-                        size: 46,
-                        color: Color(0xFF98E28D),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: const LeafLogo(size: 84),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(height: 18),
                       const Text(
                         'IIAP',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 46,
+                          fontSize: 36,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 1.5,
+                          letterSpacing: 3.0,
                         ),
                       ),
                     ],

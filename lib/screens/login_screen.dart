@@ -8,6 +8,7 @@ import '../widgets/app_text_field.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
+import '../services/notification_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -65,6 +66,8 @@ class _LoginScreenState extends State<LoginScreen> {
           duration: const Duration(seconds: 2),
         ),
       );
+
+      NotificationService.scheduleAllAttendanceReminders();
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -163,16 +166,20 @@ class _LoginScreenState extends State<LoginScreen> {
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(10),
+                                padding: const EdgeInsets.all(3),
                                 decoration: BoxDecoration(
-                                  color: ThemeService.containerColor(context),
+                                  color: Colors.white,
                                   borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: ThemeService.cardBorder(context)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                                child: Icon(
-                                  Icons.fingerprint_rounded,
-                                  color: ThemeService.primaryColor(context),
-                                  size: 26,
-                                ),
+                                child: const LeafLogo(size: 40),
                               ),
                               const SizedBox(width: 14),
                               Expanded(

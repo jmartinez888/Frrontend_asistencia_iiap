@@ -5,11 +5,13 @@ import '../services/theme_service.dart';
 class ShiftJourneyCard extends StatelessWidget {
   final ShiftJourneyRecord journey;
   final bool showUserName;
+  final VoidCallback? onEdit;
 
   const ShiftJourneyCard({
     super.key,
     required this.journey,
     this.showUserName = false,
+    this.onEdit,
   });
 
   String _formatTime(DateTime? dt) {
@@ -77,11 +79,17 @@ class ShiftJourneyCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onEdit,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             // Cabecera: Fecha + Turno + Estado
             Row(
               children: [
@@ -189,6 +197,36 @@ class ShiftJourneyCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                if (onEdit != null) ...[
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: onEdit,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: ThemeService.primaryColor(context).withValues(alpha: isDark ? 0.2 : 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: ThemeService.primaryColor(context).withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.edit_calendar_rounded, size: 11, color: ThemeService.primaryColor(context)),
+                          const SizedBox(width: 3),
+                          Text(
+                            'Editar Horarios',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              color: ThemeService.primaryColor(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
 
@@ -397,6 +435,8 @@ class ShiftJourneyCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }

@@ -62,6 +62,8 @@ class ApiConfig {
   static String get attendanceAll => '$baseUrl/attendance/all';
   static String get attendancePendingCheckouts => '$baseUrl/attendance/pending-checkouts';
   static String get attendanceWeeklyReset => '$baseUrl/attendance/weekly-reset';
+  static String get attendanceCorrectJourney => '$baseUrl/attendance/correct-journey';
+  static String attendanceById(String id) => '$baseUrl/attendance/$id';
 
   // Rutas de Eventos
   static String get eventsAll => '$baseUrl/events';
@@ -69,6 +71,7 @@ class ApiConfig {
   static String eventRegisterAttendance(String id) => '$baseUrl/events/$id/attendance';
   static String eventGenerateQr(String id) => '$baseUrl/events/$id/qr';
   static String eventAttendees(String id) => '$baseUrl/events/$id/attendees';
+  static String eventDeleteAttendee(String eventId, String attendeeId) => '$baseUrl/events/$eventId/attendees/$attendeeId';
 
   /// URL web pública para que cualquier persona sin la app escanee con la cámara de su celular
   static String eventPublicRegistrationUrl(String eventId) {

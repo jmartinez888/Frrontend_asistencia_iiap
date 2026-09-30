@@ -15,6 +15,7 @@ import '../../services/event_service.dart';
 import '../../models/event_model.dart';
 import '../../services/theme_service.dart';
 import '../../services/connectivity_service.dart';
+import '../../widgets/leaf_logo.dart';
 
 class DashboardTab extends StatefulWidget {
   final VoidCallback onNavigateToHistory;
@@ -282,21 +283,49 @@ class _DashboardTabState extends State<DashboardTab> {
                         ],
                       ),
                       const SizedBox(height: 14),
-                      Text(
-                        'Hola, ${user.fullName}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 19,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _getUserSubtitle(user),
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontSize: 12.5,
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.18),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const LeafLogo(size: 38),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Hola, ${user.fullName}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _getUserSubtitle(user),
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.85),
+                                    fontSize: 12.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
