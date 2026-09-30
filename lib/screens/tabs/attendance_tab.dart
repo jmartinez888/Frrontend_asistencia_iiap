@@ -498,6 +498,423 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
     );
   }
 
+  /// Diálogo para que el Administrador o Supervisor edite los horarios de Entrada y Salida
+  /// de cualquier colaborador (soluciona cuando llegan temprano, olvidan marcar entrada y marcan a la 1 PM)
+  Future<void> _showEditJourneyDialog(ShiftJourneyRecord journey) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primary = ThemeService.primaryColor(context);
+
+    final isMorning = journey.shift == AttendanceShift.MORNING;
+
+    // Horas iniciales
+    TimeOfDay inTime = journey.checkIn != null
+        ? TimeOfDay.fromDateTime(journey.checkIn!.timestamp)
+        : TimeOfDay(hour: isMorning ? 8 : 14, minute: 0);
+
+    TimeOfDay outTime = journey.checkOut != null
+        ? TimeOfDay.fromDateTime(journey.checkOut!.timestamp)
+        : TimeOfDay(hour: isMorning ? 13 : 18, minute: isMorning ? 0 : 30);
+
+    bool enableCheckIn = true;
+    bool enableCheckOut = journey.checkOut != null || (journey.checkIn != null && journey.isPendingCheckOut);
+
+    AttendanceStatus inStatus = journey.checkIn?.status ?? AttendanceStatus.ON_TIME;
+    final obsController = TextEditingController(
+      text: journey.checkIn?.observation ?? journey.checkOut?.observation ?? 'Ajuste de horarios por Administrador',
+    );
+
+    bool isSubmitting = false;
+
+    String formatTimeOfDay(TimeOfDay t) {
+      final hour = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+      final minute = t.minute.toString().padLeft(2, '0');
+      final period = t.period == DayPeriod.am ? 'a. m.' : 'p. m.';
+      return '${hour.toString().padLeft(2, '0')}:$minute $period';
+    }
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            backgroundColor: ThemeService.cardBg(context),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.edit_calendar_rounded, color: primary, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Editar Horarios de Asistencia',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        journey.userName ?? 'Colaborador',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: primary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 480,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Badge con Fecha, DNI y Turno
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Fecha: ${journey.workDate}',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        if (journey.userDocument != null && journey.userDocument!.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'DNI: ${journey.userDocument}',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isMorning
+                                ? const Color(0xFF2563EB).withValues(alpha: 0.15)
+                                : const Color(0xFFD97706).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            journey.shift == AttendanceShift.MORNING ? 'Turno Mañana' : 'Turno Tarde',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isMorning ? const Color(0xFF2563EB) : const Color(0xFFD97706),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.info_outline_rounded, color: Colors.amber, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Si el colaborador llegó a tiempo pero olvidó marcar en la mañana y marcó a la 1:00 PM, establece aquí su Entrada (ej: 08:00 AM) y su Salida (01:00 PM).',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // 1. SECCIÓN ENTRADA
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A).withValues(alpha: 0.6) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: enableCheckIn ? const Color(0xFF16A34A).withValues(alpha: 0.4) : ThemeService.cardBorder(context),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Checkbox(
+                                value: enableCheckIn,
+                                activeColor: const Color(0xFF16A34A),
+                                onChanged: (v) => setDialogState(() => enableCheckIn = v ?? true),
+                              ),
+                              const Icon(Icons.login_rounded, size: 16, color: Color(0xFF16A34A)),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Entrada (Ingreso)',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          if (enableCheckIn) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    onTap: () async {
+                                      final picked = await showTimePicker(
+                                        context: context,
+                                        initialTime: inTime,
+                                      );
+                                      if (picked != null) {
+                                        setDialogState(() => inTime = picked);
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            formatTimeOfDay(inTime),
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                          ),
+                                          const Icon(Icons.access_time_rounded, size: 18, color: Color(0xFF16A34A)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                DropdownButton<AttendanceStatus>(
+                                  value: inStatus,
+                                  borderRadius: BorderRadius.circular(10),
+                                  underline: const SizedBox(),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: AttendanceStatus.ON_TIME,
+                                      child: Text('Puntual (A tiempo)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF16A34A))),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: AttendanceStatus.LATE,
+                                      child: Text('Tardanza', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFD97706))),
+                                    ),
+                                  ],
+                                  onChanged: (st) {
+                                    if (st != null) setDialogState(() => inStatus = st);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // 2. SECCIÓN SALIDA
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A).withValues(alpha: 0.6) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: enableCheckOut ? const Color(0xFFD97706).withValues(alpha: 0.4) : ThemeService.cardBorder(context),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Checkbox(
+                                value: enableCheckOut,
+                                activeColor: const Color(0xFFD97706),
+                                onChanged: (v) => setDialogState(() => enableCheckOut = v ?? false),
+                              ),
+                              const Icon(Icons.logout_rounded, size: 16, color: Color(0xFFD97706)),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Salida (Refrigerio / Fin de jornada)',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          if (enableCheckOut) ...[
+                            const SizedBox(height: 6),
+                            InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () async {
+                                final picked = await showTimePicker(
+                                  context: context,
+                                  initialTime: outTime,
+                                );
+                                if (picked != null) {
+                                  setDialogState(() => outTime = picked);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      formatTimeOfDay(outTime),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                    const Icon(Icons.access_time_rounded, size: 18, color: Color(0xFFD97706)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Observación
+                    const Text('Motivo / Observación de la corrección *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: obsController,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        hintText: 'Ej. Olvido de marca matutina / Salida regularizada',
+                        prefixIcon: const Icon(Icons.edit_note_rounded, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.of(ctx).pop(),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: isSubmitting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save_rounded, size: 18),
+                label: const Text('Guardar Corrección'),
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        if (!enableCheckIn && !enableCheckOut) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Debes habilitar al menos la Entrada o la Salida.')),
+                          );
+                          return;
+                        }
+
+                        setDialogState(() => isSubmitting = true);
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        final nav = Navigator.of(ctx);
+
+                        final inStr = enableCheckIn
+                            ? '${inTime.hour.toString().padLeft(2, '0')}:${inTime.minute.toString().padLeft(2, '0')}'
+                            : null;
+                        final outStr = enableCheckOut
+                            ? '${outTime.hour.toString().padLeft(2, '0')}:${outTime.minute.toString().padLeft(2, '0')}'
+                            : null;
+
+                        try {
+                          final res = await AttendanceService.correctJourney(
+                            userId: journey.userId,
+                            workDate: journey.workDate,
+                            shift: journey.shift,
+                            checkInTime: inStr,
+                            checkInStatus: inStatus,
+                            checkOutTime: outStr,
+                            observation: obsController.text.trim(),
+                          );
+                          nav.pop();
+                          scaffoldMessenger.showSnackBar(
+                            SnackBar(
+                              backgroundColor: Colors.green,
+                              content: Text(res['message']?.toString() ?? 'Horarios corregidos exitosamente.'),
+                            ),
+                          );
+                          if (mounted) {
+                            _loadAllRecords();
+                            _loadPendingCheckouts();
+                            _loadMyRecords();
+                          }
+                        } catch (e) {
+                          setDialogState(() => isSubmitting = false);
+                          scaffoldMessenger.showSnackBar(
+                            SnackBar(
+                              backgroundColor: Colors.red,
+                              content: Text('Error al corregir horarios: $e'),
+                            ),
+                          );
+                        }
+                      },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _confirmWeeklyReset() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -640,6 +1057,7 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
                     await _loadPendingCheckouts();
                   },
                   showUserName: true,
+                  canEdit: true,
                 ),
                 _buildPendingList(
                   _pendingCheckouts,
@@ -752,6 +1170,7 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
                   await _loadPendingCheckouts();
                 },
                 showUserName: true,
+                canEdit: true,
               ),
               _buildPendingList(
                 _pendingCheckouts,
@@ -770,6 +1189,7 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
     bool isLoading,
     Future<void> Function() onRefresh, {
     required bool showUserName,
+    bool canEdit = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -819,9 +1239,11 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           itemCount: journeys.length,
           itemBuilder: (context, index) {
+            final journey = journeys[index];
             return ShiftJourneyCard(
-              journey: journeys[index],
+              journey: journey,
               showUserName: showUserName,
+              onEdit: canEdit ? () => _showEditJourneyDialog(journey) : null,
             );
           },
         ),
@@ -882,8 +1304,31 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           itemCount: items.length,
           itemBuilder: (context, index) {
+            final item = items[index];
             return PendingCheckoutCard(
-              item: items[index],
+              item: item,
+              onManualRecord: () {
+                final shift = AttendanceShift.fromString(item['shift']?.toString());
+                final dummyJourney = ShiftJourneyRecord(
+                  id: item['id']?.toString() ?? '',
+                  userId: item['user_id']?.toString() ?? '',
+                  userName: item['user_name']?.toString(),
+                  userEmail: item['user_email']?.toString(),
+                  userDocument: item['user_document']?.toString(),
+                  workDate: item['work_date']?.toString() ?? '',
+                  shift: shift,
+                  checkIn: AttendanceModel(
+                    id: item['id']?.toString() ?? '',
+                    userId: item['user_id']?.toString() ?? '',
+                    timestamp: DateTime.tryParse(item['check_in_timestamp']?.toString() ?? '') ?? DateTime.now(),
+                    type: AttendanceType.CHECK_IN,
+                    status: AttendanceStatus.ON_TIME,
+                    shift: shift,
+                    workDate: item['work_date']?.toString(),
+                  ),
+                );
+                _showEditJourneyDialog(dummyJourney);
+              },
             );
           },
         ),

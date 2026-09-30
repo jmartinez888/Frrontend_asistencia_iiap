@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/event_model.dart';
 import '../../services/event_service.dart';
 import '../../services/storage_service.dart';
@@ -6,7 +8,9 @@ import '../../services/theme_service.dart';
 import '../../utils/responsive.dart';
 import '../qr/qr_scanner_screen.dart';
 import 'create_event_screen.dart';
+import 'event_certificate_modal.dart';
 import 'event_qr_display_screen.dart';
+import 'manual_attendee_modal.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final EventModel event;
@@ -157,6 +161,265 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         }
       }
     }
+  }
+
+  Future<void> _handleRemoveAttendee(EventAttendeeModel attendee) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.person_remove_rounded, color: Color(0xFFDC2626), size: 24),
+            SizedBox(width: 8),
+            Text('¿Eliminar Asistente?'),
+          ],
+        ),
+        content: Text(
+          '¿Estás seguro de eliminar a "${attendee.userName}" de la lista oficial de asistencia de este evento? Si fue un error, la persona podrá volver a registrarse.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              elevation: 0,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => _isLoading = true);
+      try {
+        final idToRemove = attendee.id.isNotEmpty ? attendee.id : attendee.userId;
+        final updated = await EventService.removeAttendee(
+          eventId: _currentEvent.id,
+          attendeeId: idToRemove,
+        );
+        if (mounted) {
+          setState(() => _currentEvent = updated);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Se eliminó a ${attendee.userName} del evento.'),
+              backgroundColor: const Color(0xFF16A34A),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al eliminar participante: $e'),
+              backgroundColor: const Color(0xFFDC2626),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleManualRegisterAttendee() async {
+    final updated = await ManualAttendeeModal.show(context, event: _currentEvent);
+    if (updated != null && mounted) {
+      setState(() => _currentEvent = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('¡Participante registrado exitosamente en el evento!'),
+          backgroundColor: Color(0xFF16A34A),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _handleViewCertificate() {
+    final currentUser = StorageService.currentUser;
+    if (currentUser == null) return;
+
+    EventAttendeeModel myAttendee;
+    try {
+      myAttendee = _currentEvent.attendees.firstWhere(
+        (a) => a.userId == currentUser.id,
+      );
+    } catch (_) {
+      myAttendee = EventAttendeeModel(
+        id: '',
+        userId: currentUser.id,
+        userName: currentUser.fullName,
+        userEmail: currentUser.email,
+        userDepartment: currentUser.department,
+        userPosition: currentUser.position,
+        documentNumber: currentUser.documentNumber,
+        registeredAt: DateTime.now(),
+        isExternal: false,
+      );
+    }
+
+    EventCertificateModal.show(context, event: _currentEvent, attendee: myAttendee);
+  }
+
+  String _toCalendarFormat(DateTime dt) {
+    final utc = dt.toUtc();
+    return '${utc.year}${utc.month.toString().padLeft(2, '0')}${utc.day.toString().padLeft(2, '0')}T${utc.hour.toString().padLeft(2, '0')}${utc.minute.toString().padLeft(2, '0')}${utc.second.toString().padLeft(2, '0')}Z';
+  }
+
+  Future<void> _handleAddToCalendar() async {
+    final startStr = _toCalendarFormat(_currentEvent.startDate);
+    final endStr = _toCalendarFormat(_currentEvent.endDate);
+    final title = Uri.encodeComponent(_currentEvent.title);
+    final desc = Uri.encodeComponent(_currentEvent.description.isNotEmpty ? _currentEvent.description : 'Evento Institucional IIAP');
+    final loc = Uri.encodeComponent(_currentEvent.location);
+
+    final googleUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=$title&dates=$startStr/$endStr&details=$desc&location=$loc';
+    final outlookUrl = 'https://outlook.live.com/calendar/0/deeplink/compose?subject=$title&startdt=${_currentEvent.startDate.toIso8601String()}&enddt=${_currentEvent.endDate.toIso8601String()}&body=$desc&location=$loc';
+
+    final width = MediaQuery.sizeOf(context).width;
+    final isTabletOrDesktop = width >= 640;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      constraints: BoxConstraints(maxWidth: isTabletOrDesktop ? 520 : double.infinity),
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Container(
+          decoration: BoxDecoration(
+            color: ThemeService.cardBg(ctx),
+            borderRadius: isTabletOrDesktop
+                ? BorderRadius.circular(24)
+                : const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(20, isTabletOrDesktop ? 22 : 16, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isTabletOrDesktop) ...[
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              const Row(
+                children: [
+                  Icon(Icons.calendar_month_rounded, color: Color(0xFF2563EB), size: 24),
+                  SizedBox(width: 10),
+                  Text(
+                    'Añadir a mi Calendario',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Selecciona el calendario de tu preferencia para sincronizar este evento:',
+                style: TextStyle(fontSize: 12.5, color: ThemeService.subtextColor(ctx)),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: ThemeService.cardBorder(ctx)),
+                ),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4285F4).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.event_available_rounded, color: Color(0xFF4285F4), size: 20),
+                ),
+                title: const Text('Google Calendar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: const Text('Sincronizar en Android, iPhone o Web', style: TextStyle(fontSize: 12)),
+                trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  final uri = Uri.parse(googleUrl);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                },
+              ),
+              const SizedBox(height: 10),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: ThemeService.cardBorder(ctx)),
+                ),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0078D4).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.email_outlined, color: Color(0xFF0078D4), size: 20),
+                ),
+                title: const Text('Outlook / Microsoft 365', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: const Text('Calendario corporativo', style: TextStyle(fontSize: 12)),
+                trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  final uri = Uri.parse(outlookUrl);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                },
+              ),
+              const SizedBox(height: 10),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: ThemeService.cardBorder(ctx)),
+                ),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: ThemeService.primaryColor(ctx).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.copy_rounded, color: ThemeService.primaryColor(ctx), size: 20),
+                ),
+                title: const Text('Copiar Datos del Evento', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: const Text('Título, fecha, hora y ubicación en portapapeles', style: TextStyle(fontSize: 12)),
+                trailing: const Icon(Icons.check_rounded, size: 18),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  final text = '${_currentEvent.title}\nFecha: ${_formatDateTime(_currentEvent.startDate)}\nLugar: ${_currentEvent.location}\n${_currentEvent.description}';
+                  Clipboard.setData(ClipboardData(text: text));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('¡Datos del evento copiados al portapapeles!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -322,6 +585,29 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         label: 'Organizador',
                         value: '${_currentEvent.createdByName} (${_currentEvent.createdByRole})',
                       ),
+                      const SizedBox(height: 14),
+                      const Divider(height: 1),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            side: BorderSide(color: ThemeService.primaryColor(context).withValues(alpha: 0.4)),
+                          ),
+                          onPressed: _handleAddToCalendar,
+                          icon: Icon(Icons.calendar_month_rounded, size: 18, color: ThemeService.primaryColor(context)),
+                          label: Text(
+                            'Añadir a mi Calendario',
+                            style: TextStyle(
+                              color: ThemeService.primaryColor(context),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -391,23 +677,46 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         if (canScanAttendance) ...[
                           if (isAlreadyRegistered) ...[
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF16A34A).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(14),
                                 border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.5)),
                               ),
-                              child: const Row(
+                              child: Column(
                                 children: [
-                                  Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 22),
-                                  SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      '¡Tu asistencia a este evento ya está confirmada!',
-                                      style: TextStyle(
-                                        color: Color(0xFF16A34A),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 22),
+                                      SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          '¡Tu asistencia a este evento ya está confirmada!',
+                                          style: TextStyle(
+                                            color: Color(0xFF16A34A),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF16A34A),
+                                        foregroundColor: Colors.white,
+                                        elevation: 1,
+                                        padding: const EdgeInsets.symmetric(vertical: 11),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      onPressed: _handleViewCertificate,
+                                      icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                                      label: const Text(
+                                        'Ver Mi Constancia de Asistencia (PDF)',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                       ),
                                     ),
                                   ),
@@ -519,14 +828,36 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Participantes Registrados (${_currentEvent.attendees.length})',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    Expanded(
+                      child: Text(
+                        'Participantes Registrados (${_currentEvent.attendees.length})',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    if (canManage) ...[
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: ThemeService.primaryColor(context),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: _handleManualRegisterAttendee,
+                        icon: const Icon(Icons.person_add_alt_1_rounded, size: 16),
+                        label: const Text(
+                          '+ Registrar',
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -629,7 +960,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                               'DNI: ${attendee.documentNumber}',
                                             if (attendee.phoneNumber != null && attendee.phoneNumber!.isNotEmpty)
                                               'Cel: ${attendee.phoneNumber}',
-                                            if (attendee.userEmail.isNotEmpty)
+                                            if (attendee.career != null && attendee.career!.isNotEmpty)
+                                              attendee.career!,
+                                            if (attendee.gender != null && attendee.gender!.isNotEmpty)
+                                              attendee.gender!,
+                                            if (attendee.age != null)
+                                              '${attendee.age} años',
+                                            if (attendee.institution != null && attendee.institution!.isNotEmpty)
+                                              attendee.institution!,
+                                            if (attendee.userEmail.isNotEmpty && attendee.documentNumber == null)
                                               attendee.userEmail,
                                           ].join(' • ')
                                         : (attendee.userDepartment ?? attendee.userPosition ?? attendee.userEmail),
@@ -672,6 +1011,21 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 ],
                               ),
                             ),
+                            if (canManage) ...[
+                              const SizedBox(width: 4),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 19,
+                                  color: Color(0xFFEF4444),
+                                ),
+                                tooltip: 'Eliminar participante del evento',
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                onPressed: _isLoading ? null : () => _handleRemoveAttendee(attendee),
+                              ),
+                            ],
                           ],
                         ),
                       );

@@ -14,6 +14,9 @@ import '../../widgets/opera_gx_theme_picker.dart';
 import '../../widgets/photo_viewer_dialog.dart';
 import '../wallpaper_screen.dart';
 import '../login_screen.dart';
+import '../../widgets/leaf_logo.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/notification_service.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
@@ -34,6 +37,12 @@ class _ProfileTabState extends State<ProfileTab> {
   String _documentType = 'DNI';
   bool _isSavingInstitutionalInfo = false;
 
+  bool _notifMorningEntry = true;
+  bool _notifMorningExit = true;
+  bool _notifAfternoonEntry = true;
+  bool _notifAfternoonExit = true;
+  bool _notifEvents = true;
+
   @override
   void initState() {
     super.initState();
@@ -44,6 +53,39 @@ class _ProfileTabState extends State<ProfileTab> {
     _phoneController = TextEditingController(text: user?.phoneNumber ?? '');
     _documentType = _detectDocumentType(user?.documentNumber);
     _refreshProfile();
+    _loadNotificationSettings();
+  }
+
+  Future<void> _loadNotificationSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          _notifMorningEntry = prefs.getBool('notif_morning_entry') ?? true;
+          _notifMorningExit = prefs.getBool('notif_morning_exit') ?? true;
+          _notifAfternoonEntry = prefs.getBool('notif_afternoon_entry') ?? true;
+          _notifAfternoonExit = prefs.getBool('notif_afternoon_exit') ?? true;
+          _notifEvents = prefs.getBool('notif_events') ?? true;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleNotificationSetting(String key, bool value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(key, value);
+      if (mounted) {
+        setState(() {
+          if (key == 'notif_morning_entry') _notifMorningEntry = value;
+          if (key == 'notif_morning_exit') _notifMorningExit = value;
+          if (key == 'notif_afternoon_entry') _notifAfternoonEntry = value;
+          if (key == 'notif_afternoon_exit') _notifAfternoonExit = value;
+          if (key == 'notif_events') _notifEvents = value;
+        });
+      }
+      await NotificationService.scheduleAllAttendanceReminders();
+    } catch (_) {}
   }
 
   Future<void> _refreshProfile() async {
@@ -1668,6 +1710,9 @@ class _ProfileTabState extends State<ProfileTab> {
                   ),
                 ),
 
+                const SizedBox(height: 18),
+                _buildOfflineNotificationsCard(context),
+
                 const SizedBox(height: 24),
                 // Botón Cerrar Sesión
                 SizedBox(
@@ -1687,6 +1732,47 @@ class _ProfileTabState extends State<ProfileTab> {
                   ),
                 ),
 
+                const SizedBox(height: 24),
+                Center(
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const LeafLogo(size: 32),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Instituto de Investigaciones de la Amazonía Peruana',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: ThemeService.subtextColor(context),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Control de Asistencia • v1.0.0',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: ThemeService.subtextColor(context).withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 const SizedBox(height: 20),
               ],
             ),
@@ -1694,6 +1780,286 @@ class _ProfileTabState extends State<ProfileTab> {
         ),
       );
       },
+    );
+  }
+
+  Widget _buildOfflineNotificationsCard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primary = ThemeService.primaryColor(context);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: ThemeService.cardBg(context),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: ThemeService.cardBorder(context),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.notifications_active_rounded,
+                  color: primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Recordatorios y Notificaciones',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.wifi_off_rounded, size: 11, color: Color(0xFF10B981)),
+                              SizedBox(width: 4),
+                              Text(
+                                '100% Offline (Sin Internet)',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF10B981),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.alarm_on_rounded, size: 11, color: Color(0xFF3B82F6)),
+                              SizedBox(width: 4),
+                              Text(
+                                'Fuera de la app',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF3B82F6),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Las alarmas se programan directamente en el sistema operativo de tu dispositivo. Sonarán a la hora exacta aunque no tengas Wi-Fi ni datos móviles, o tengas la aplicación cerrada.',
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Switch: Entrada Mañana
+          _buildNotifSwitch(
+            title: 'Entrada Mañana (07:45 a. m.)',
+            subtitle: 'Aviso para registrar ingreso al iniciar el día',
+            icon: Icons.wb_sunny_outlined,
+            iconColor: const Color(0xFFF59E0B),
+            value: _notifMorningEntry,
+            onChanged: (val) => _toggleNotificationSetting('notif_morning_entry', val),
+            isDark: isDark,
+            primary: primary,
+          ),
+          Divider(color: isDark ? Colors.white10 : Colors.black12, height: 16),
+
+          // Switch: Salida Mañana
+          _buildNotifSwitch(
+            title: 'Salida Mañana (01:00 p. m.)',
+            subtitle: 'Recordatorio oportuno para marcar refrigerio',
+            icon: Icons.restaurant_outlined,
+            iconColor: const Color(0xFF10B981),
+            value: _notifMorningExit,
+            onChanged: (val) => _toggleNotificationSetting('notif_morning_exit', val),
+            isDark: isDark,
+            primary: primary,
+          ),
+          Divider(color: isDark ? Colors.white10 : Colors.black12, height: 16),
+
+          // Switch: Entrada Tarde
+          _buildNotifSwitch(
+            title: 'Entrada Tarde (02:00 p. m.)',
+            subtitle: 'Aviso para registrar reingreso de la tarde',
+            icon: Icons.access_time_rounded,
+            iconColor: const Color(0xFF6366F1),
+            value: _notifAfternoonEntry,
+            onChanged: (val) => _toggleNotificationSetting('notif_afternoon_entry', val),
+            isDark: isDark,
+            primary: primary,
+          ),
+          Divider(color: isDark ? Colors.white10 : Colors.black12, height: 16),
+
+          // Switch: Salida Tarde
+          _buildNotifSwitch(
+            title: 'Salida Tarde (06:30 p. m.)',
+            subtitle: 'Alerta oportuna de fin de jornada laboral',
+            icon: Icons.nightlight_outlined,
+            iconColor: const Color(0xFF8B5CF6),
+            value: _notifAfternoonExit,
+            onChanged: (val) => _toggleNotificationSetting('notif_afternoon_exit', val),
+            isDark: isDark,
+            primary: primary,
+          ),
+          Divider(color: isDark ? Colors.white10 : Colors.black12, height: 16),
+
+          // Switch: Eventos IIAP
+          _buildNotifSwitch(
+            title: 'Eventos y Capacitaciones (1h antes)',
+            subtitle: 'Notificación anticipada de eventos en los que estás inscrito',
+            icon: Icons.event_available_rounded,
+            iconColor: const Color(0xFFEC4899),
+            value: _notifEvents,
+            onChanged: (val) => _toggleNotificationSetting('notif_events', val),
+            isDark: isDark,
+            primary: primary,
+          ),
+
+          const SizedBox(height: 16),
+
+          // Botón Probar Notificación Ahora
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: primary.withValues(alpha: 0.6)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: primary.withValues(alpha: 0.05),
+              ),
+              onPressed: () async {
+                await NotificationService.triggerTestNotification();
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.white, size: 20),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            '¡Notificación de prueba enviada! Revisa la barra de tu dispositivo.',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: primary,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              },
+              icon: Icon(Icons.touch_app_rounded, color: primary, size: 18),
+              label: Text(
+                'Probar Notificación Ahora',
+                style: TextStyle(
+                  color: primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotifSwitch({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color iconColor,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required bool isDark,
+    required Color primary,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: iconColor, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Switch.adaptive(
+          value: value,
+          activeTrackColor: primary,
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 

@@ -91,6 +91,10 @@ class EventAttendeeModel {
   final String? userDepartment;
   final String? documentNumber;
   final String? phoneNumber;
+  final String? gender;
+  final int? age;
+  final String? career;
+  final String? institution;
   final bool isExternal;
   final DateTime registeredAt;
   final String? notes;
@@ -104,6 +108,10 @@ class EventAttendeeModel {
     this.userDepartment,
     this.documentNumber,
     this.phoneNumber,
+    this.gender,
+    this.age,
+    this.career,
+    this.institution,
     this.isExternal = false,
     required this.registeredAt,
     this.notes,
@@ -119,6 +127,10 @@ class EventAttendeeModel {
       userDepartment: json['user_department']?.toString() ?? json['userDepartment']?.toString(),
       documentNumber: json['document_number']?.toString() ?? json['documentNumber']?.toString() ?? json['dni']?.toString(),
       phoneNumber: json['phone_number']?.toString() ?? json['phoneNumber']?.toString() ?? json['telefono']?.toString(),
+      gender: json['gender']?.toString() ?? json['sexo']?.toString(),
+      age: (json['age'] as num?)?.toInt() ?? (json['edad'] as num?)?.toInt(),
+      career: json['career']?.toString() ?? json['carrera']?.toString(),
+      institution: json['institution']?.toString() ?? json['institucion']?.toString() ?? json['user_department']?.toString(),
       isExternal: json['is_external'] == true || json['isExternal'] == true,
       registeredAt: json['registered_at'] != null
           ? (DateTime.tryParse(json['registered_at'].toString())?.toLocal() ?? DateTime.now())
@@ -139,6 +151,10 @@ class EventAttendeeModel {
       'user_department': userDepartment,
       'document_number': documentNumber,
       'phone_number': phoneNumber,
+      'gender': gender,
+      'age': age,
+      'career': career,
+      'institution': institution,
       'is_external': isExternal,
       'registered_at': registeredAt.toIso8601String(),
       'notes': notes,

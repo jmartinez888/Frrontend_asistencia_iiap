@@ -115,4 +115,43 @@ class AttendanceService {
     );
     return response as Map<String, dynamic>;
   }
+
+  /// Corregir o registrar horarios de entrada y salida de una jornada (Admin o Supervisor)
+  static Future<Map<String, dynamic>> correctJourney({
+    required String userId,
+    required String workDate,
+    required AttendanceShift shift,
+    String? checkInTime,
+    AttendanceStatus? checkInStatus,
+    String? checkOutTime,
+    String? observation,
+  }) async {
+    final response = await ApiClient.post(
+      ApiConfig.attendanceCorrectJourney,
+      body: {
+        'user_id': userId,
+        'work_date': workDate,
+        'shift': shift.name,
+        if (checkInTime != null && checkInTime.isNotEmpty) 'check_in_time': checkInTime,
+        if (checkInStatus != null) 'check_in_status': checkInStatus.name,
+        if (checkOutTime != null && checkOutTime.isNotEmpty) 'check_out_time': checkOutTime,
+        if (observation != null && observation.isNotEmpty) 'observation': observation,
+      },
+    );
+    return response as Map<String, dynamic>;
+  }
+
+  /// Editar un registro individual de asistencia
+  static Future<Map<String, dynamic>> updateRecord(String id, Map<String, dynamic> data) async {
+    final response = await ApiClient.patch(
+      ApiConfig.attendanceById(id),
+      body: data,
+    );
+    return response as Map<String, dynamic>;
+  }
+
+  /// Eliminar un registro de asistencia
+  static Future<void> deleteRecord(String id) async {
+    await ApiClient.delete(ApiConfig.attendanceById(id));
+  }
 }
