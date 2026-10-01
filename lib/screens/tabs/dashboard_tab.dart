@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../utils/responsive.dart';
 import '../../models/user_model.dart';
-import '../../models/attendance_model.dart';
 import '../../services/storage_service.dart';
-import '../../services/attendance_service.dart';
 import '../../services/auth_service.dart';
-import '../../widgets/attendance_card.dart';
 import '../qr/qr_display_screen.dart';
 import '../qr/qr_scanner_screen.dart';
 import '../events/events_list_screen.dart';
@@ -18,11 +15,11 @@ import '../../services/connectivity_service.dart';
 import '../../widgets/leaf_logo.dart';
 
 class DashboardTab extends StatefulWidget {
-  final VoidCallback onNavigateToHistory;
+  final VoidCallback? onNavigateToHistory;
 
   const DashboardTab({
     super.key,
-    required this.onNavigateToHistory,
+    this.onNavigateToHistory,
   });
 
   @override
@@ -30,58 +27,10 @@ class DashboardTab extends StatefulWidget {
 }
 
 class _DashboardTabState extends State<DashboardTab> {
-  List<AttendanceModel> _todayRecords = [];
-  List<AttendanceModel> _institutionalRecords = [];
-  bool _isLoadingToday = false;
-
   @override
   void initState() {
     super.initState();
-    // 1. Carga inmediata de registros guardados localmente (0 ms)
-    final user = StorageService.currentUser;
-    if (user?.isAdmin == true) {
-      _institutionalRecords = AttendanceService.getCachedAllRecords().take(5).toList();
-    } else {
-      _todayRecords = AttendanceService.getCachedTodayRecords();
-    }
-    // Solo mostramos spinner si no tenemos nada guardado previamente
-    _isLoadingToday = _todayRecords.isEmpty && _institutionalRecords.isEmpty;
-
-    // 2. Sincronización en segundo plano con el backend
-    _loadTodayAttendance();
     EventService.getEvents();
-  }
-
-  Future<void> _loadTodayAttendance() async {
-    if (_todayRecords.isEmpty && _institutionalRecords.isEmpty) {
-      setState(() => _isLoadingToday = true);
-    }
-    try {
-      final user = StorageService.currentUser;
-      if (user?.isAdmin == true) {
-        final all = await AttendanceService.getAllRecords();
-        if (mounted) {
-          setState(() {
-            _institutionalRecords = all.take(5).toList();
-            _isLoadingToday = false;
-          });
-        }
-      } else {
-        final records = await AttendanceService.getTodayRecords();
-        if (mounted) {
-          setState(() {
-            _todayRecords = records;
-            _isLoadingToday = false;
-          });
-        }
-      }
-    } catch (_) {
-      // Ignorar errores transitorios
-    } finally {
-      if (mounted) {
-        setState(() => _isLoadingToday = false);
-      }
-    }
   }
 
   void _handleGenerarQr(BuildContext context, UserModel user) {
@@ -139,14 +88,20 @@ class _DashboardTabState extends State<DashboardTab> {
       ),
     );
     if (res == true) {
-      _loadTodayAttendance();
+      EventService.getEvents();
     }
   }
 
   String _getRoleShortName(UserRole role) {
     switch (role) {
+      case UserRole.SUPERADMIN:
+        return 'SUPERADMIN';
       case UserRole.ADMIN:
         return 'ADMIN';
+      case UserRole.ADMIN_EVENTO:
+        return 'ADMIN EVENTO';
+      case UserRole.GESTOR_EVENTO:
+        return 'GESTOR EVENTO';
       case UserRole.SUPERVISOR:
         return 'SUPERVISOR';
       case UserRole.USER:
@@ -155,9 +110,12 @@ class _DashboardTabState extends State<DashboardTab> {
   }
 
   String _getUserSubtitle(UserModel user) {
-    if (user.isAdmin) return 'Admin';
+    if (user.isSuperAdmin) return 'Super Administrador';
+    if (user.isAdmin) return 'Admin IIAP';
+    if (user.isAdminEvento) return 'Admin Evento / UO';
+    if (user.isGestorEvento) return 'Gestor Evento / UO';
     if (user.isSupervisor) return 'Supervisor';
-    return 'User';
+    return 'Usuario';
   }
 
   @override
@@ -173,15 +131,14 @@ class _DashboardTabState extends State<DashboardTab> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final roleColor = user.isAdmin
+        final roleColor = (user.isAdmin || user.isSuperAdmin)
             ? const Color(0xFFDC2626)
-            : (user.isSupervisor ? const Color(0xFFD97706) : const Color(0xFF16A34A));
+            : (user.isSupervisor || user.isAdminEvento ? const Color(0xFFD97706) : const Color(0xFF16A34A));
 
         return SafeArea(
           child: RefreshIndicator(
             onRefresh: () async {
               await AuthService.getProfile();
-              await _loadTodayAttendance();
               await EventService.getEvents();
             },
             child: SingleChildScrollView(
@@ -459,117 +416,6 @@ class _DashboardTabState extends State<DashboardTab> {
                 _buildEventsSection(context, user),
 
                 const SizedBox(height: 24),
-
-                // Sección Asistencias:
-                // Para el Administrador: Registro Institucional Reciente
-                // Para Personal / Supervisor: Mis Marcas de Hoy
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        user.isAdmin ? 'Marcas Institucionales Recientes' : 'Mis Marcas de Hoy',
-                        style: TextStyle(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      ),
-                      onPressed: widget.onNavigateToHistory,
-                      child: Text(
-                        user.isAdmin ? 'Ver Registro Completo' : 'Ver Historial',
-                        style: const TextStyle(fontSize: 12.5),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                if (_isLoadingToday)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (user.isAdmin)
-                  if (_institutionalRecords.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(22),
-                      decoration: BoxDecoration(
-                        color: ThemeService.cardBg(context),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: ThemeService.cardBorder(context),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.corporate_fare_rounded,
-                            size: 38,
-                            color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                          ),
-                          const SizedBox(height: 10),
-                          const Text(
-                            'Sin marcas registradas hoy',
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Cuando los colaboradores escaneen el QR, sus asistencias se mostrarán aquí.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    ..._institutionalRecords.map((r) => AttendanceCard(record: r, showUserName: true))
-                else if (_todayRecords.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      color: ThemeService.cardBg(context),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: ThemeService.cardBorder(context),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.history_toggle_off_rounded,
-                          size: 38,
-                          color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'Aún no has registrado asistencia hoy',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Presiona "Escanear QR" para registrar tu entrada.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  ..._todayRecords.map((r) => AttendanceCard(record: r, showUserName: false)),
                 ],
               ),
             ),

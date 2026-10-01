@@ -37,11 +37,7 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
     _isLoadingAll = _allRecords.isEmpty;
 
     final user = StorageService.currentUserNotifier.value ?? StorageService.currentUser;
-    if (user != null && user.isAdmin) {
-      _tabController = TabController(length: 2, vsync: this);
-      _loadAllRecords();
-      _loadPendingCheckouts();
-    } else if (user != null && user.isSupervisor) {
+    if (user != null && (user.isAdmin || user.isSupervisor)) {
       _tabController = TabController(length: 3, vsync: this);
       _loadAllRecords();
       _loadMyRecords();
@@ -171,7 +167,7 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
 
     await showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -544,7 +540,7 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
 
     await showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
@@ -1044,6 +1040,10 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
                     icon: Icon(Icons.corporate_fare_rounded, size: 20),
                     text: 'Registro General',
                   ),
+                  const Tab(
+                    icon: Icon(Icons.person_outline_rounded, size: 20),
+                    text: 'Mis Asistencias',
+                  ),
                   Tab(
                     icon: Badge(
                       isLabelVisible: _pendingCheckouts.isNotEmpty,
@@ -1068,6 +1068,12 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
                   },
                   showUserName: true,
                   canEdit: true,
+                ),
+                _buildJourneyList(
+                  ShiftJourneyRecord.groupFromRecords(_myRecords),
+                  _isLoadingMy,
+                  _loadMyRecords,
+                  showUserName: false,
                 ),
                 _buildPendingList(
                   _pendingCheckouts,
