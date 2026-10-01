@@ -30,7 +30,13 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
   @override
   void initState() {
     super.initState();
-    final user = StorageService.currentUserNotifier.value;
+    // 1. Carga inmediata de registros guardados localmente (0 ms)
+    _myRecords = AttendanceService.getCachedMyRecords();
+    _allRecords = AttendanceService.getCachedAllRecords();
+    _isLoadingMy = _myRecords.isEmpty;
+    _isLoadingAll = _allRecords.isEmpty;
+
+    final user = StorageService.currentUserNotifier.value ?? StorageService.currentUser;
     if (user != null && user.isAdmin) {
       _tabController = TabController(length: 2, vsync: this);
       _loadAllRecords();
@@ -52,7 +58,9 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
   }
 
   Future<void> _loadMyRecords() async {
-    setState(() => _isLoadingMy = true);
+    if (_myRecords.isEmpty) {
+      setState(() => _isLoadingMy = true);
+    }
     try {
       final records = await AttendanceService.getMyRecords();
       if (mounted) {
@@ -73,7 +81,9 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
   }
 
   Future<void> _loadAllRecords() async {
-    setState(() => _isLoadingAll = true);
+    if (_allRecords.isEmpty) {
+      setState(() => _isLoadingAll = true);
+    }
     try {
       final records = await AttendanceService.getAllRecords();
       if (mounted) {

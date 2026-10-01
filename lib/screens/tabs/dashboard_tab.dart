@@ -32,17 +32,30 @@ class DashboardTab extends StatefulWidget {
 class _DashboardTabState extends State<DashboardTab> {
   List<AttendanceModel> _todayRecords = [];
   List<AttendanceModel> _institutionalRecords = [];
-  bool _isLoadingToday = true;
+  bool _isLoadingToday = false;
 
   @override
   void initState() {
     super.initState();
+    // 1. Carga inmediata de registros guardados localmente (0 ms)
+    final user = StorageService.currentUser;
+    if (user?.isAdmin == true) {
+      _institutionalRecords = AttendanceService.getCachedAllRecords().take(5).toList();
+    } else {
+      _todayRecords = AttendanceService.getCachedTodayRecords();
+    }
+    // Solo mostramos spinner si no tenemos nada guardado previamente
+    _isLoadingToday = _todayRecords.isEmpty && _institutionalRecords.isEmpty;
+
+    // 2. Sincronización en segundo plano con el backend
     _loadTodayAttendance();
     EventService.getEvents();
   }
 
   Future<void> _loadTodayAttendance() async {
-    setState(() => _isLoadingToday = true);
+    if (_todayRecords.isEmpty && _institutionalRecords.isEmpty) {
+      setState(() => _isLoadingToday = true);
+    }
     try {
       final user = StorageService.currentUser;
       if (user?.isAdmin == true) {

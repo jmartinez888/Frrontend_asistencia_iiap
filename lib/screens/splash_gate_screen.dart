@@ -2,11 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/storage_service.dart';
-import '../services/auth_service.dart';
 import '../widgets/leaf_logo.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
-import '../services/notification_service.dart';
 
 class SplashGateScreen extends StatefulWidget {
   const SplashGateScreen({super.key});
@@ -23,30 +21,23 @@ class _SplashGateScreenState extends State<SplashGateScreen> {
   }
 
   Future<void> _checkAuth() async {
-    // Pausa breve para una transición visual impecable
-    await Future.delayed(const Duration(milliseconds: 300));
+    // Lectura local instantánea con transición suave de 0.2 seg
+    await Future.delayed(const Duration(milliseconds: 200));
 
     final user = StorageService.currentUser;
-    final token = await StorageService.getToken();
+    final token = StorageService.tokenSync ?? await StorageService.getToken();
 
-    // SESIÓN PERMANENTE (Estilo redes sociales):
-    // Si el usuario ya tiene sesión iniciada, entra SIEMPRE Y DIRECTAMENTE al Home.
-    // Nunca se le pide volver a loguearse por inactividad o tiempo transcurrido.
+    // SESIÓN PERSISTENTE OFFLINE-FIRST:
+    // Si hay usuario o token guardado localmente, se manda de frente al Home con esos datos locales.
+    // La validación y refresh del token se harán en segundo plano una vez dentro del Home.
     if (user != null || (token != null && token.isNotEmpty)) {
       if (mounted) {
         _navigateTo(const HomeScreen());
       }
-      // De forma transparente y no bloqueante en segundo plano, refrescar datos y alarmas offline
-      unawaited(() async {
-        try {
-          await NotificationService.scheduleAllAttendanceReminders();
-          await AuthService.getProfile();
-        } catch (_) {}
-      }());
       return;
     }
 
-    // Solo si el usuario nunca ha iniciado sesión o cerró sesión voluntariamente, va al login
+    // Solo si no hay ninguna sesión guardada previamente va al login
     if (mounted) {
       _navigateTo(const LoginScreen());
     }
@@ -74,47 +65,46 @@ class _SplashGateScreenState extends State<SplashGateScreen> {
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFF2B542E),
-        body: Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: const BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment(0.0, -0.05),
-              radius: 1.15,
-              colors: [
-                Color(0xFF4C8050), // Centro verde luminoso
-                Color(0xFF3F6C42), // Verde medio institucional
-                Color(0xFF234B26), // Transición a verde oscuro
-                Color(0xFF133215), // Verde profundo
-                Color(0xFF0C240E), // Base inferior oscura
-              ],
-              stops: [0.0, 0.35, 0.65, 0.88, 1.0],
+        backgroundColor: const Color(0xFF133215),
+        body: RepaintBoundary(
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF3F6C42), // Verde medio superior
+                  Color(0xFF2B542E), // Verde institucional
+                  Color(0xFF1B431E), // Transición
+                  Color(0xFF0F2B12), // Verde base
+                ],
+              ),
             ),
-          ),
-          child: SafeArea(
-            child: Stack(
-              children: [
-                // Logo central IIAP
-                Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(22),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.35),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
+            child: SafeArea(
+              child: Stack(
+                children: [
+                  // Logo central IIAP
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(22),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.25),
+                                blurRadius: 16,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: const LeafLogo(size: 84),
                         ),
-                        child: const LeafLogo(size: 84),
-                      ),
                       const SizedBox(height: 18),
                       const Text(
                         'IIAP',
@@ -173,6 +163,7 @@ class _SplashGateScreenState extends State<SplashGateScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

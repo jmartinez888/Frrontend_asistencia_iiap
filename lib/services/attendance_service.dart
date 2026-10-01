@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../models/attendance_model.dart';
 import '../models/qr_model.dart';
@@ -53,31 +56,109 @@ class AttendanceService {
     return response as Map<String, dynamic>;
   }
 
-  // 5. Historial de asistencias del usuario conectado
+  static const String _keyCachedToday = 'cached_today_attendance_records_v1';
+  static const String _keyCachedMy = 'cached_my_attendance_records_v1';
+  static const String _keyCachedAll = 'cached_all_attendance_records_v1';
+
+  static List<AttendanceModel> _cachedTodayRecords = [];
+  static List<AttendanceModel> _cachedMyRecords = [];
+  static List<AttendanceModel> _cachedAllRecords = [];
+
+  /// Inicializa los datos cacheados en memoria al arrancar la app para respuesta instantánea (0 ms)
+  static Future<void> init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final todayStr = prefs.getString(_keyCachedToday);
+      if (todayStr != null && todayStr.isNotEmpty) {
+        final list = jsonDecode(todayStr) as List;
+        _cachedTodayRecords = list
+            .whereType<Map<String, dynamic>>()
+            .map((e) => AttendanceModel.fromJson(e))
+            .toList();
+      }
+
+      final myStr = prefs.getString(_keyCachedMy);
+      if (myStr != null && myStr.isNotEmpty) {
+        final list = jsonDecode(myStr) as List;
+        _cachedMyRecords = list
+            .whereType<Map<String, dynamic>>()
+            .map((e) => AttendanceModel.fromJson(e))
+            .toList();
+      }
+
+      final allStr = prefs.getString(_keyCachedAll);
+      if (allStr != null && allStr.isNotEmpty) {
+        final list = jsonDecode(allStr) as List;
+        _cachedAllRecords = list
+            .whereType<Map<String, dynamic>>()
+            .map((e) => AttendanceModel.fromJson(e))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('AttendanceService.init error cargando caché local: $e');
+    }
+  }
+
+  static List<AttendanceModel> getCachedTodayRecords() => List.unmodifiable(_cachedTodayRecords);
+  static List<AttendanceModel> getCachedMyRecords() => List.unmodifiable(_cachedMyRecords);
+  static List<AttendanceModel> getCachedAllRecords() => List.unmodifiable(_cachedAllRecords);
+
+  // 5. Historial de asistencias del usuario conectado (Offline-First)
   static Future<List<AttendanceModel>> getMyRecords() async {
-    final response = await ApiClient.get(ApiConfig.attendanceMyRecords);
-    if (response is List) {
-      return response.map((item) => AttendanceModel.fromJson(item as Map<String, dynamic>)).toList();
+    try {
+      final response = await ApiClient.get(ApiConfig.attendanceMyRecords);
+      if (response is List) {
+        final list = response.map((item) => AttendanceModel.fromJson(item as Map<String, dynamic>)).toList();
+        _cachedMyRecords = list;
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_keyCachedMy, jsonEncode(list.map((e) => e.toJson()).toList()));
+        } catch (_) {}
+        return list;
+      }
+    } catch (e) {
+      debugPrint('getMyRecords fallback a caché local offline: $e');
     }
-    return [];
+    return _cachedMyRecords;
   }
 
-  // 6. Asistencias de hoy del usuario conectado
+  // 6. Asistencias de hoy del usuario conectado (Offline-First)
   static Future<List<AttendanceModel>> getTodayRecords() async {
-    final response = await ApiClient.get(ApiConfig.attendanceToday);
-    if (response is List) {
-      return response.map((item) => AttendanceModel.fromJson(item as Map<String, dynamic>)).toList();
+    try {
+      final response = await ApiClient.get(ApiConfig.attendanceToday);
+      if (response is List) {
+        final list = response.map((item) => AttendanceModel.fromJson(item as Map<String, dynamic>)).toList();
+        _cachedTodayRecords = list;
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_keyCachedToday, jsonEncode(list.map((e) => e.toJson()).toList()));
+        } catch (_) {}
+        return list;
+      }
+    } catch (e) {
+      debugPrint('getTodayRecords fallback a caché local offline: $e');
     }
-    return [];
+    return _cachedTodayRecords;
   }
 
-  // 7. Todas las asistencias registradas en la institucion (Admin y Supervisores)
+  // 7. Todas las asistencias registradas en la institucion (Admin y Supervisores) (Offline-First)
   static Future<List<AttendanceModel>> getAllRecords() async {
-    final response = await ApiClient.get(ApiConfig.attendanceAll);
-    if (response is List) {
-      return response.map((item) => AttendanceModel.fromJson(item as Map<String, dynamic>)).toList();
+    try {
+      final response = await ApiClient.get(ApiConfig.attendanceAll);
+      if (response is List) {
+        final list = response.map((item) => AttendanceModel.fromJson(item as Map<String, dynamic>)).toList();
+        _cachedAllRecords = list;
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_keyCachedAll, jsonEncode(list.map((e) => e.toJson()).toList()));
+        } catch (_) {}
+        return list;
+      }
+    } catch (e) {
+      debugPrint('getAllRecords fallback a caché local offline: $e');
     }
-    return [];
+    return _cachedAllRecords;
   }
 
   // 7.1 Consultar colaboradores con salidas pendientes o no registradas (Admin y Supervisores)

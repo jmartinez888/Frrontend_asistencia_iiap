@@ -46,5 +46,6 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
   assets:
+    - assets/app_icon.jpg
     - assets/images/
     - assets/images/wallpapers/

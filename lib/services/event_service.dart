@@ -13,9 +13,19 @@ class EventService {
   static const String _localEventsKey = 'local_stored_events_v1';
   static final ValueNotifier<List<EventModel>> eventsNotifier = ValueNotifier<List<EventModel>>([]);
 
-  /// Inicializa los eventos desde el backend o desde SharedPreferences local
+  /// Inicializa los eventos desde el almacenamiento local (offline-first) y sincroniza en segundo plano
   static Future<List<EventModel>> getEvents({bool forceRefresh = false}) async {
-    // 1. Intentar obtener desde el backend
+    // 1. Carga inmediata desde la caché local si aún no hay eventos en memoria
+    if (eventsNotifier.value.isEmpty || forceRefresh) {
+      final localList = await _loadFromLocalCache();
+      final cleanList = localList.where((e) => !e.id.startsWith('evt_seed_')).toList();
+      cleanList.sort((a, b) => b.startDate.compareTo(a.startDate));
+      if (cleanList.isNotEmpty && eventsNotifier.value.isEmpty) {
+        eventsNotifier.value = cleanList;
+      }
+    }
+
+    // 2. Consulta y sincronización en segundo plano con el backend
     try {
       final response = await ApiClient.get(ApiConfig.eventsAll);
       if (response != null && response is List) {
@@ -47,30 +57,7 @@ class EventService {
       debugPrint('EventService: backend no disponible o sin endpoint (/api/events). Usando caché local: $e');
     }
 
-    // 2. Fallback a caché local persistente
-    final localList = await _loadFromLocalCache();
-    // Limpiar cualquier evento de ejemplo previo que haya quedado guardado en memoria del celular
-    final cleanList = localList.where((e) => !e.id.startsWith('evt_seed_')).toList();
-    if (cleanList.length != localList.length) {
-      await _saveToLocalCache(cleanList);
-    }
-
-    cleanList.sort((a, b) => b.startDate.compareTo(a.startDate));
-    eventsNotifier.value = cleanList;
-
-    final now = DateTime.now();
-    for (final evt in cleanList) {
-      if (evt.startDate.isAfter(now)) {
-        NotificationService.scheduleEventReminders(
-          eventId: evt.id,
-          title: evt.title,
-          location: evt.location,
-          startDate: evt.startDate,
-        );
-      }
-    }
-
-    return cleanList;
+    return eventsNotifier.value;
   }
 
   /// Crea un nuevo evento (Solo Admin o Supervisor)

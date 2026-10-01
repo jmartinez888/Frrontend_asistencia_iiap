@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
 import '../models/user_model.dart';
@@ -110,6 +114,57 @@ class AuthService {
       return false;
     } finally {
       _isSilentLoggingIn = false;
+    }
+  }
+
+  /// Valida o refresca el token en segundo plano de manera no bloqueante.
+  /// Si el backend responde 401/403 (sesión revocada o credenciales cambiadas) y falla el re-login silencioso,
+  /// limpia la sesión y retorna false para que la app redirija al login.
+  /// Si el dispositivo no tiene internet o hay un error de red/servidor, retorna true y mantiene la sesión offline.
+  static Future<bool> validateSessionInBackground() async {
+    try {
+      final token = await StorageService.getToken();
+      if (token == null || token.isEmpty) {
+        return false;
+      }
+
+      final response = await http
+          .get(
+            Uri.parse(ApiConfig.authMe),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        final user = UserModel.fromJson(data);
+        await StorageService.updateCurrentUser(user);
+        return true;
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        final reauthenticated = await trySilentRelogin();
+        if (reauthenticated) {
+          return true;
+        }
+        await StorageService.clearSession();
+        return false;
+      }
+
+      // Códigos de error de servidor (500, 502, etc.): preservar sesión offline
+      return true;
+    } on SocketException {
+      // Dispositivo offline: preservar sesión localmente
+      return true;
+    } on http.ClientException {
+      return true;
+    } on TimeoutException {
+      return true;
+    } catch (e) {
+      debugPrint('validateSessionInBackground ignorado por offline/red: $e');
+      return true;
     }
   }
 

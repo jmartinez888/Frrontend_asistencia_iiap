@@ -10,6 +10,7 @@ import 'tabs/profile_tab.dart';
 import '../services/theme_service.dart';
 import '../services/notification_service.dart';
 import '../utils/responsive.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,6 +30,49 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _startSyncTimer();
     NotificationService.checkAndTriggerCheckoutReminder();
+
+    // Sesión persistente offline-first:
+    // El usuario ya ve y usa la app de inmediato con sus datos locales.
+    // En segundo plano verificamos y refrescamos el token con el backend.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _validateSessionInBackground();
+    });
+  }
+
+  Future<void> _validateSessionInBackground() async {
+    try {
+      final isValid = await AuthService.validateSessionInBackground();
+      if (!isValid && mounted) {
+        // Solo si el backend rechazó la sesión explícitamente (401 definitivo) y no hay re-login:
+        _syncTimer?.cancel();
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.lock_clock_outlined, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Tu sesión ha expirado o tus credenciales cambiaron. Por favor ingresa de nuevo.',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (_) {
+      // Ignorar errores transitorios de red para no botar al usuario offline
+    }
   }
 
   @override
@@ -43,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       _startSyncTimer();
       _syncProfile();
+      _validateSessionInBackground();
       NotificationService.checkAndTriggerCheckoutReminder();
     } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       _syncTimer?.cancel();
@@ -246,16 +291,36 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       child: Padding(
                         padding: const EdgeInsets.only(bottom: 20),
                         child: Tooltip(
-                          message: currentUser?.fullName ?? '',
-                          child: CircleAvatar(
-                            radius: 17,
-                            backgroundColor: ThemeService.primaryColor(context),
-                            child: Text(
-                              (currentUser?.fullName.isNotEmpty == true ? currentUser!.fullName[0] : 'U').toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                          message: 'Ver mi Perfil (${currentUser?.fullName ?? ""})',
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(22),
+                            onTap: () {
+                              // Al presionar la foto abajito en tablet, ipad y Windows, envía directamente al perfil
+                              setState(() => _currentIndex = pages.length - 1);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: CircleAvatar(
+                                radius: 18,
+                                backgroundColor: ThemeService.primaryColor(context),
+                                backgroundImage: (currentUser?.photoUrl != null &&
+                                        currentUser!.photoUrl!.isNotEmpty)
+                                    ? NetworkImage(currentUser.photoUrl!)
+                                    : null,
+                                child: (currentUser?.photoUrl == null ||
+                                        currentUser!.photoUrl!.isEmpty)
+                                    ? Text(
+                                        (currentUser?.fullName.isNotEmpty == true
+                                                ? currentUser!.fullName[0]
+                                                : 'U')
+                                            .toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      )
+                                    : null,
                               ),
                             ),
                           ),

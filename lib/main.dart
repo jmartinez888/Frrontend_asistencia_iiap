@@ -5,6 +5,7 @@ import 'config/api_config.dart';
 import 'services/theme_service.dart';
 import 'services/wallpaper_service.dart';
 import 'services/storage_service.dart';
+import 'services/attendance_service.dart';
 import 'services/schedule_service.dart';
 import 'services/connectivity_service.dart';
 import 'services/notification_service.dart';
@@ -27,6 +28,7 @@ void main() async {
   await WallpaperService.init();
   await ApiConfig.init();
   await StorageService.init();
+  await AttendanceService.init();
   await ScheduleService.init();
   await ConnectivityService.init();
   await NotificationService.init();
