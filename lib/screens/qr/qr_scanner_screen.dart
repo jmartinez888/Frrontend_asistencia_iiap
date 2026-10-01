@@ -90,10 +90,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         String? targetEventId = widget.eventId;
         if (targetEventId == null) {
           if (cleanCode.startsWith('IIAP-EVT-')) {
-            final parts = cleanCode.split('-');
-            if (parts.length >= 3) {
-              targetEventId = parts[2];
-            }
+            final withoutPrefix = cleanCode.substring('IIAP-EVT-'.length);
+            final withoutQuery = withoutPrefix.split('?').first;
+            targetEventId = withoutQuery;
           } else if (hasEventIdParam) {
             targetEventId = uri.queryParameters['id'] ?? uri.queryParameters['event_id'];
           }

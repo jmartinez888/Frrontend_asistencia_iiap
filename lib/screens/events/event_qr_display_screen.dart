@@ -6,16 +6,24 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../config/api_config.dart';
 import '../../models/event_model.dart';
 import '../../services/api_client.dart';
+import '../../services/event_service.dart';
 import '../../services/theme_service.dart';
 import '../../utils/responsive.dart';
 import '../../widgets/app_button.dart';
 
+enum EventQrMode {
+  registered,
+  external,
+}
+
 class EventQrDisplayScreen extends StatefulWidget {
   final EventModel event;
+  final EventQrMode initialMode;
 
   const EventQrDisplayScreen({
     super.key,
     required this.event,
+    this.initialMode = EventQrMode.registered,
   });
 
   @override
@@ -25,6 +33,7 @@ class EventQrDisplayScreen extends StatefulWidget {
 class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
   static const int _rotationSeconds = 30;
 
+  late EventQrMode _selectedMode;
   late String _currentQrData;
   late int _attendeesCount;
 
@@ -39,6 +48,7 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedMode = widget.initialMode;
     _attendeesCount = widget.event.attendeesCount;
     _currentQrData = _generateDynamicQr();
     _startTimers();
@@ -52,13 +62,20 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
     super.dispose();
   }
 
-  /// Genera una URL web dinámica con timestamp y nonce aleatorio para rotar el QR
+  /// Genera el contenido dinámico del QR según el modo seleccionado
   String _generateDynamicQr() {
-    final baseUrl = ApiConfig.eventPublicRegistrationUrl(widget.event.id);
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final nonce = Random().nextInt(999999).toString().padLeft(6, '0');
-    final separator = baseUrl.contains('?') ? '&' : '?';
-    return '$baseUrl${separator}t=$timestamp&nonce=$nonce';
+
+    if (_selectedMode == EventQrMode.registered) {
+      // Formato para usuarios de la App IIAP con cuenta activa
+      return 'IIAP-EVT-${widget.event.id}?t=$timestamp&nonce=$nonce';
+    } else {
+      // URL web pública para abrir el formulario en el navegador del celular
+      final baseUrl = ApiConfig.eventPublicRegistrationUrl(widget.event.id);
+      final separator = baseUrl.contains('?') ? '&' : '?';
+      return '$baseUrl${separator}t=$timestamp&nonce=$nonce';
+    }
   }
 
   void _startTimers() {
@@ -96,6 +113,8 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
         // Si se detecta un nuevo registro de participante:
         if (latestCount > _attendeesCount) {
           _attendeesCount = latestCount;
+          // Actualizar lista global de eventos para reflejar el nuevo asistente
+          EventService.getEvents();
           HapticFeedback.heavyImpact();
           _rotateQr(
             reason: '¡NUEVO REGISTRO CONFIRMADO! Código QR renovado',
@@ -151,6 +170,30 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
     }
   }
 
+  void _manualRegenerateQr() {
+    HapticFeedback.lightImpact();
+    _rotateQr(reason: 'Código QR renovado manualmente por el Administrador');
+  }
+
+  void _switchMode(EventQrMode mode) {
+    if (_selectedMode == mode) return;
+    HapticFeedback.selectionClick();
+    setState(() {
+      _selectedMode = mode;
+      _currentQrData = _generateDynamicQr();
+      _secondsRemaining = _rotationSeconds;
+      _justRotated = true;
+      _rotationReason = mode == EventQrMode.registered
+          ? 'Modo cambiado: Usuario Registrado (App IIAP)'
+          : 'Modo cambiado: Usuario Externo (Formulario Web)';
+    });
+
+    _badgeTimer?.cancel();
+    _badgeTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _justRotated = false);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -161,19 +204,23 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
 
     // Tamaño adaptativo del QR para iPad, Tablet, Monitor o Teléfono
     final double qrBoxSize = isWide
-        ? 360.0
-        : (isTablet ? 320.0 : (size.width < 360 ? 210.0 : 250.0));
+        ? 340.0
+        : (isTablet ? 300.0 : (size.width < 360 ? 210.0 : 250.0));
 
     final progressRatio = (_secondsRemaining / _rotationSeconds).clamp(0.0, 1.0);
     final progressColor = _secondsRemaining > 10
         ? const Color(0xFF16A34A)
         : (_secondsRemaining > 5 ? const Color(0xFFEAB308) : const Color(0xFFEF4444));
 
+    final activeModeColor = _selectedMode == EventQrMode.registered
+        ? const Color(0xFF16A34A)
+        : const Color(0xFF0284C7);
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
-          'Código QR del Evento',
+          'Proyección QR de Evento',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         elevation: 0,
@@ -181,11 +228,8 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.autorenew_rounded),
-            tooltip: 'Renovar Código QR ahora',
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              _rotateQr(reason: 'Código renovado manualmente');
-            },
+            tooltip: 'Cambiar Código QR ahora',
+            onPressed: _manualRegenerateQr,
           ),
         ],
       ),
@@ -193,8 +237,8 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: EdgeInsets.symmetric(
-              horizontal: isTablet ? 32 : 20,
-              vertical: isTablet ? 28 : 20,
+              horizontal: isTablet ? 32 : 18,
+              vertical: isTablet ? 24 : 16,
             ),
             child: ConstrainedBox(
               constraints: BoxConstraints(
@@ -203,10 +247,49 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // 1. Encabezado del Evento
+                  // 1. Selector de Modo: Usuario Registrado vs Usuario Externo
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildModeTab(
+                            title: 'Usuario Registrado',
+                            subtitle: 'Con App IIAP',
+                            icon: Icons.phone_android_rounded,
+                            mode: EventQrMode.registered,
+                            isSelected: _selectedMode == EventQrMode.registered,
+                            activeColor: const Color(0xFF16A34A),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: _buildModeTab(
+                            title: 'Usuario Externo',
+                            subtitle: 'Formulario Web',
+                            icon: Icons.language_rounded,
+                            mode: EventQrMode.external,
+                            isSelected: _selectedMode == EventQrMode.external,
+                            activeColor: const Color(0xFF0284C7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // 2. Encabezado del Evento
                   Container(
                     width: double.infinity,
-                    padding: EdgeInsets.all(isTablet ? 22 : 16),
+                    padding: EdgeInsets.all(isTablet ? 20 : 16),
                     decoration: BoxDecoration(
                       color: ThemeService.cardBg(context),
                       borderRadius: BorderRadius.circular(20),
@@ -257,7 +340,7 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
                                     const Icon(Icons.people_alt_rounded, size: 14, color: Color(0xFF16A34A)),
                                     const SizedBox(width: 5),
                                     Text(
-                                      '$_attendeesCount Asistentes',
+                                      '$_attendeesCount Participantes',
                                       style: const TextStyle(
                                         fontSize: 11.5,
                                         fontWeight: FontWeight.bold,
@@ -270,12 +353,12 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         Text(
                           widget.event.title,
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: isTablet ? 20 : 17,
+                            fontSize: isTablet ? 19 : 16.5,
                             fontWeight: FontWeight.bold,
                             color: isDark ? Colors.white : const Color(0xFF0F172A),
                           ),
@@ -289,7 +372,7 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
                             Flexible(
                               child: Text(
                                 widget.event.location,
-                                style: TextStyle(fontSize: 13, color: ThemeService.subtextColor(context)),
+                                style: TextStyle(fontSize: 12.5, color: ThemeService.subtextColor(context)),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -299,9 +382,9 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
-                  // 2. Banner animado al renovar código por escaneo
+                  // 3. Banner animado al renovar código por escaneo
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
                     child: _justRotated
@@ -310,11 +393,11 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF16A34A),
+                              color: activeModeColor,
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF16A34A).withValues(alpha: 0.4),
+                                  color: activeModeColor.withValues(alpha: 0.4),
                                   blurRadius: 10,
                                   offset: const Offset(0, 3),
                                 ),
@@ -342,21 +425,21 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
                         : const SizedBox.shrink(key: ValueKey('empty_banner')),
                   ),
 
-                  // 3. Tarjeta del Código QR Dinámico
+                  // 4. Tarjeta del Código QR Dinámico
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 350),
-                    padding: EdgeInsets.all(isTablet ? 26 : 18),
+                    padding: EdgeInsets.all(isTablet ? 24 : 18),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: _justRotated ? const Color(0xFF16A34A) : Colors.transparent,
-                        width: _justRotated ? 3.5 : 0,
+                        color: _justRotated ? activeModeColor : const Color(0xFFE2E8F0),
+                        width: _justRotated ? 3.5 : 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
                           color: _justRotated
-                              ? const Color(0xFF16A34A).withValues(alpha: 0.35)
+                              ? activeModeColor.withValues(alpha: 0.35)
                               : Colors.black.withValues(alpha: 0.08),
                           blurRadius: _justRotated ? 24 : 16,
                           offset: const Offset(0, 6),
@@ -366,6 +449,43 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Badge descriptivo del tipo de QR
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: activeModeColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: activeModeColor.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _selectedMode == EventQrMode.registered
+                                    ? Icons.phone_android_rounded
+                                    : Icons.language_rounded,
+                                size: 15,
+                                color: activeModeColor,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _selectedMode == EventQrMode.registered
+                                    ? 'QR PARA USUARIO REGISTRADO (APP)'
+                                    : 'QR PARA USUARIO EXTERNO (WEB)',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: activeModeColor,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // Código QR renderizado
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 350),
                           transitionBuilder: (child, anim) => ScaleTransition(
@@ -386,32 +506,6 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
                               dataModuleShape: QrDataModuleShape.square,
                               color: Color(0xFF0F172A),
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Badge Oficial IIAP
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.verified_rounded, size: 15, color: Color(0xFF16A34A)),
-                              SizedBox(width: 6),
-                              Text(
-                                'CÓDIGO OFICIAL IIAP',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF334155),
-                                  letterSpacing: 0.6,
-                                ),
-                              ),
-                            ],
                           ),
                         ),
 
@@ -464,51 +558,101 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
                             ],
                           ),
                         ),
+
+                        const SizedBox(height: 14),
+
+                        // Botón directo para Cambiar/Regenerar QR manualmente
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 11),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              side: BorderSide(color: activeModeColor),
+                              foregroundColor: activeModeColor,
+                            ),
+                            onPressed: _manualRegenerateQr,
+                            icon: const Icon(Icons.autorenew_rounded, size: 18),
+                            label: const Text(
+                              'Cambiar Código QR Ahora',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
 
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 16),
 
-                  // 4. Instrucción clara para asistentes
-                  Text(
-                    'Muestra o proyecta este código en el monitor o pantalla del auditorio.\nEl código se renueva automáticamente cada 30 segundos o al instante tras cada escaneo para máxima seguridad.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: isTablet ? 13.5 : 12.5,
-                      color: ThemeService.subtextColor(context),
-                      height: 1.45,
+                  // 5. Caja explicativa e instructiva según el modo
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: ThemeService.cardBg(context),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: ThemeService.cardBorder(context)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          _selectedMode == EventQrMode.registered
+                              ? Icons.info_outline_rounded
+                              : Icons.open_in_browser_rounded,
+                          size: 20,
+                          color: activeModeColor,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _selectedMode == EventQrMode.registered
+                                ? 'Para personas con la App IIAP y cuenta activa: abren la app, presionan "Escanear QR de Asistencia" y su presencia en el evento queda confirmada al instante.'
+                                : 'Para personas sin la app: apuntan con la cámara de su celular (o Google Lens) y se les abrirá el formulario web oficial en su navegador para completar sus datos y figurar en la lista.',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: ThemeService.subtextColor(context),
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 20),
 
-                  // 5. Botones de Acción
+                  // 6. Botones de Acción: Copiar Enlace y Cerrar
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(vertical: isTablet ? 16 : 13),
+                            padding: EdgeInsets.symmetric(vertical: isTablet ? 15 : 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             side: BorderSide(color: ThemeService.primaryColor(context)),
                           ),
                           onPressed: () {
                             Clipboard.setData(ClipboardData(text: _currentQrData));
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Enlace oficial copiado al portapapeles'),
-                                duration: Duration(seconds: 2),
+                              SnackBar(
+                                content: Text(
+                                  _selectedMode == EventQrMode.registered
+                                      ? 'Código de evento copiado al portapapeles'
+                                      : 'Enlace web oficial de registro copiado al portapapeles',
+                                ),
+                                duration: const Duration(seconds: 2),
                               ),
                             );
                           },
                           icon: Icon(Icons.copy_rounded, color: ThemeService.primaryColor(context), size: 18),
                           label: Text(
-                            'Copiar Enlace',
+                            _selectedMode == EventQrMode.registered ? 'Copiar Código' : 'Copiar Enlace Web',
                             style: TextStyle(
                               color: ThemeService.primaryColor(context),
                               fontWeight: FontWeight.bold,
-                              fontSize: isTablet ? 14 : 13,
+                              fontSize: isTablet ? 14 : 12.5,
                             ),
                           ),
                         ),
@@ -527,6 +671,85 @@ class _EventQrDisplayScreenState extends State<EventQrDisplayScreen> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeTab({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required EventQrMode mode,
+    required bool isSelected,
+    required Color activeColor,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: () => _switchMode(mode),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? const Color(0xFF0F172A) : Colors.white)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: isSelected
+              ? Border.all(color: activeColor.withValues(alpha: 0.5), width: 1.5)
+              : null,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected
+                  ? activeColor
+                  : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected
+                          ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                          : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected
+                          ? activeColor
+                          : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

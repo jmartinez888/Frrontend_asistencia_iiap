@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -27,16 +28,30 @@ class EventDetailScreen extends StatefulWidget {
 class _EventDetailScreenState extends State<EventDetailScreen> {
   late EventModel _currentEvent;
   bool _isLoading = false;
+  Timer? _liveRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     _currentEvent = widget.event;
     EventService.eventsNotifier.addListener(_onEventsUpdated);
+    _startLiveRefresh();
+  }
+
+  void _startLiveRefresh() {
+    _liveRefreshTimer?.cancel();
+    // Sondeo periódico para reflejar en tiempo real participantes que llenan el formulario web o escanean el QR
+    _liveRefreshTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      if (!mounted) return;
+      try {
+        await EventService.getEvents();
+      } catch (_) {}
+    });
   }
 
   @override
   void dispose() {
+    _liveRefreshTimer?.cancel();
     EventService.eventsNotifier.removeListener(_onEventsUpdated);
     super.dispose();
   }
@@ -46,8 +61,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       (e) => e.id == _currentEvent.id,
       orElse: () => _currentEvent,
     );
-    if (mounted && updated != _currentEvent) {
+    if (mounted && (updated != _currentEvent || updated.attendees.length != _currentEvent.attendees.length)) {
+      final hadFewer = updated.attendees.length > _currentEvent.attendees.length;
       setState(() => _currentEvent = updated);
+      if (hadFewer) {
+        HapticFeedback.lightImpact();
+      }
     }
   }
 
@@ -761,30 +780,90 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           ],
                         ],
 
-                        // 2. Proyectar/Mostrar QR del Evento (Solo Administrador y Supervisor)
+                        // 2. Proyectar/Mostrar QR del Evento: Dos opciones (Usuario Registrado y Usuario Externo)
                         if (canProjectQr) ...[
-                          if (canScanAttendance) const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 13),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                side: BorderSide(color: ThemeService.primaryColor(context)),
+                          if (canScanAttendance) const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Icon(Icons.qr_code_2_rounded, size: 18, color: ThemeService.primaryColor(context)),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Proyección de Asistencia (2 Modalidades)',
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A),
+                                ),
                               ),
-                              onPressed: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => EventQrDisplayScreen(event: _currentEvent),
-                                  ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isWide = constraints.maxWidth >= 520;
+                              final card1 = _buildQrOptionCard(
+                                context: context,
+                                title: 'Usuario Registrado',
+                                badge: 'Con App IIAP',
+                                badgeColor: const Color(0xFF16A34A),
+                                icon: Icons.phone_android_rounded,
+                                description:
+                                    'Para colaboradores que tienen la aplicación instalada y su cuenta institucional activa. Al escanearlo, su asistencia queda confirmada al instante.',
+                                buttonText: 'Proyectar QR Registrados',
+                                buttonColor: const Color(0xFF16A34A),
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => EventQrDisplayScreen(
+                                        event: _currentEvent,
+                                        initialMode: EventQrMode.registered,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+
+                              final card2 = _buildQrOptionCard(
+                                context: context,
+                                title: 'Usuario Externo',
+                                badge: 'Sin App / Formulario Web',
+                                badgeColor: const Color(0xFF0284C7),
+                                icon: Icons.language_rounded,
+                                description:
+                                    'Para personas que no tienen la app ni cuenta. Al escanear con su cámara, se abre el formulario web en su navegador y al registrarse aparecen aquí.',
+                                buttonText: 'Proyectar QR Externo',
+                                buttonColor: const Color(0xFF0284C7),
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => EventQrDisplayScreen(
+                                        event: _currentEvent,
+                                        initialMode: EventQrMode.external,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+
+                              if (isWide) {
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(child: card1),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: card2),
+                                  ],
                                 );
-                              },
-                              icon: Icon(Icons.qr_code_2_rounded, color: ThemeService.primaryColor(context), size: 20),
-                              label: Text(
-                                'Mostrar / Proyectar QR del Evento',
-                                style: TextStyle(color: ThemeService.primaryColor(context), fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                            ),
+                              } else {
+                                return Column(
+                                  children: [
+                                    card1,
+                                    const SizedBox(height: 12),
+                                    card2,
+                                  ],
+                                );
+                              }
+                            },
                           ),
                         ],
                       ],
@@ -1071,6 +1150,115 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildQrOptionCard({
+    required BuildContext context,
+    required String title,
+    required String badge,
+    required Color badgeColor,
+    required IconData icon,
+    required String description,
+    required String buttonText,
+    required Color buttonColor,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A).withValues(alpha: 0.6) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: badgeColor.withValues(alpha: isDark ? 0.4 : 0.3),
+          width: 1.3,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: badgeColor.withValues(alpha: 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: badgeColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: badgeColor, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13.5,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        badge,
+                        style: TextStyle(
+                          color: badgeColor,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            description,
+            style: TextStyle(
+              fontSize: 11.5,
+              height: 1.38,
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: buttonColor,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: onTap,
+              icon: const Icon(Icons.qr_code_2_rounded, size: 17),
+              label: Text(
+                buttonText,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
