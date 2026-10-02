@@ -1375,22 +1375,50 @@ class _ProfileTabState extends State<ProfileTab> {
 
                 // Badge de Rol
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
                   decoration: BoxDecoration(
-                    color: ThemeService.containerColor(context),
+                    gradient: user.isSuperAdmin
+                        ? const LinearGradient(
+                            colors: [Color(0xFFB45309), Color(0xFFF59E0B)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: user.isSuperAdmin ? null : ThemeService.containerColor(context),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: ThemeService.primaryColor(context).withValues(alpha: 0.3),
-                      width: 1,
+                      color: user.isSuperAdmin
+                          ? const Color(0xFFFDE68A)
+                          : ThemeService.primaryColor(context).withValues(alpha: 0.3),
+                      width: user.isSuperAdmin ? 1.5 : 1,
                     ),
+                    boxShadow: user.isSuperAdmin
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ]
+                        : null,
                   ),
-                  child: Text(
-                    user.role.displayName,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: ThemeService.primaryColor(context),
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (user.isSuperAdmin) ...[
+                        const Icon(Icons.stars_rounded, color: Colors.white, size: 16),
+                        const SizedBox(width: 6),
+                      ],
+                      Text(
+                        user.isSuperAdmin ? 'SUPERADMIN · CONTROL TOTAL' : user.role.displayName,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: user.isSuperAdmin ? Colors.white : ThemeService.primaryColor(context),
+                          letterSpacing: user.isSuperAdmin ? 0.6 : 0,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 

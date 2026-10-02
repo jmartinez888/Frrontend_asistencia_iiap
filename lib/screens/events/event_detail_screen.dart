@@ -446,11 +446,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final currentUser = StorageService.currentUser;
-    final isAdmin = currentUser?.isAdmin == true;
+    final isSuperAdmin = currentUser?.isSuperAdmin == true;
+    final isAdmin = currentUser?.isAdmin == true || isSuperAdmin;
     final isSupervisor = currentUser?.isSupervisor == true;
-    final canManage = isAdmin || isSupervisor;
-    final canProjectQr = isAdmin || isSupervisor;
-    final canScanAttendance = !isAdmin;
+    final canManage = currentUser?.canManageEvents == true || isSuperAdmin || isAdmin;
+    final canProjectQr = currentUser?.canManageEvents == true || isSuperAdmin || isAdmin;
+    final canScanAttendance = !isAdmin && !isSuperAdmin;
     final isAlreadyRegistered = currentUser != null && _currentEvent.isUserRegistered(currentUser.id);
 
     return Scaffold(
@@ -903,6 +904,97 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   const SizedBox(height: 24),
                 ],
 
+                // 3. Tarjeta destacada: Registro Presencial para personas sin celular
+                if (canManage) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                            : [const Color(0xFFFFFBEB), const Color(0xFFFEF3C7)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: const Color(0xFFD97706).withValues(alpha: isDark ? 0.45 : 0.35),
+                        width: 1.3,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFD97706).withValues(alpha: 0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFD97706).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.no_cell_rounded, color: Color(0xFFD97706), size: 20),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Registro Presencial (Participante Sin Celular)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13.5,
+                                      color: isDark ? Colors.white : const Color(0xFF92400E),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Si la persona no cuenta con smartphone o internet, regístrala aquí con su DNI para figurar de inmediato en la lista oficial.',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      height: 1.35,
+                                      color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF78350F),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD97706),
+                              foregroundColor: Colors.white,
+                              elevation: 1,
+                              padding: const EdgeInsets.symmetric(vertical: 11),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: _handleManualRegisterAttendee,
+                            icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                            label: const Text(
+                              'Registrar Asistente Manualmente (Sin Celular)',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                ],
+
                 // Lista de Asistentes Registrados
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -930,9 +1022,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         onPressed: _handleManualRegisterAttendee,
-                        icon: const Icon(Icons.person_add_alt_1_rounded, size: 16),
+                        icon: const Icon(Icons.add_rounded, size: 16),
                         label: const Text(
-                          '+ Registrar',
+                          '+ Agregar',
                           style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
                         ),
                       ),
