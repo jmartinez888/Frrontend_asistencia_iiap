@@ -4,6 +4,7 @@ import '../../utils/responsive.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/qr_model.dart';
+import '../../models/user_model.dart';
 import '../../services/storage_service.dart';
 import '../../services/attendance_service.dart';
 import '../../services/auth_service.dart';
@@ -14,14 +15,23 @@ import '../../widgets/app_button.dart';
 enum QrMode {
   attendance,
   supervisorAssignment,
+  roleAssignment,
 }
 
 class QrDisplayScreen extends StatefulWidget {
   final QrMode mode;
+  final String? targetRole;
+  final String? targetEventId;
+  final String? customTitle;
+  final String? customSubtitle;
 
   const QrDisplayScreen({
     super.key,
     this.mode = QrMode.attendance,
+    this.targetRole,
+    this.targetEventId,
+    this.customTitle,
+    this.customSubtitle,
   });
 
   @override
@@ -140,6 +150,12 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
         response = forceNew
             ? await AttendanceService.generateAttendanceQr()
             : await AttendanceService.getActiveAttendanceQr();
+      } else if (widget.mode == QrMode.roleAssignment) {
+        final res = await AttendanceService.generateAssignmentQr(
+          targetRole: widget.targetRole ?? 'ADMIN',
+          targetEventId: widget.targetEventId,
+        );
+        response = QrGeneratedResponse.fromJson(res);
       } else {
         response = await AttendanceService.generateSupervisorQr();
       }
@@ -207,7 +223,22 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
     final currentUser = StorageService.currentUser;
 
     final isAttendance = widget.mode == QrMode.attendance;
-    final title = isAttendance ? 'Generador de Código QR' : 'Designar Supervisor';
+    final String title;
+    final String subtitle;
+    if (widget.customTitle != null) {
+      title = widget.customTitle!;
+      subtitle = widget.customSubtitle ?? 'Escanear para confirmar designación';
+    } else if (widget.mode == QrMode.roleAssignment) {
+      final roleText = widget.targetRole != null ? UserRole.fromString(widget.targetRole).displayName : 'Designación';
+      title = 'Designar $roleText';
+      subtitle = widget.customSubtitle ?? 'El usuario debe escanear este QR con su app';
+    } else if (isAttendance) {
+      title = 'Generador de Código QR';
+      subtitle = 'Válido por 5 minutos • Renovación por escaneo';
+    } else {
+      title = 'Designar Supervisor';
+      subtitle = 'Válido por 10 minutos • Límite institucional';
+    }
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -277,12 +308,16 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                             children: [
                               Row(
                                 children: [
-                                  Text(
-                                    isAttendance ? 'Toma de Asistencia' : 'Designación',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  Flexible(
+                                    child: Text(
+                                      isAttendance
+                                          ? 'Toma de Asistencia'
+                                          : (widget.mode == QrMode.roleAssignment ? 'Designación de Rol' : 'Designación'),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
@@ -306,7 +341,7 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                'Válido por 5 minutos • Renovación por escaneo',
+                                subtitle,
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),

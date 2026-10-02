@@ -17,6 +17,7 @@ enum ScanTarget {
   attendance,
   supervisorPromotion,
   eventAttendance,
+  roleAssignment,
 }
 
 class QrScannerScreen extends StatefulWidget {
@@ -133,7 +134,28 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         }
       }
 
-      // 1. Si el target es explícitamente supervisorPromotion
+      // 1. Asignación de Roles o Gestor de Eventos por QR (IIAP-ASSIGN-)
+      if (cleanCode.startsWith('IIAP-ASSIGN-') || widget.target == ScanTarget.roleAssignment) {
+        final result = await AttendanceService.scanAssignmentQr(cleanCode);
+        await AuthService.getProfile();
+        if (!mounted) return;
+        final roleName = result['new_role'] ?? result['role'] ?? 'Asignado';
+        final eventTitle = result['event_title'];
+        String msg = '¡Tu nuevo rol institucional es $roleName!';
+        if (eventTitle != null && eventTitle.toString().isNotEmpty) {
+          msg += '\nHas sido designado exitosamente como Gestor del evento:\n"$eventTitle".';
+        }
+        await _showSuccessDialog(
+          title: '¡Designación Confirmada!',
+          message: msg,
+          detail: 'Usuario: ${StorageService.currentUser?.fullName ?? ""}',
+          isShaVerified: true,
+        );
+        if (mounted) Navigator.of(context).pop(true);
+        return;
+      }
+
+      // 1.1 Si el target es explícitamente supervisorPromotion
       if (widget.target == ScanTarget.supervisorPromotion) {
         final result = await AttendanceService.scanSupervisorQr(cleanCode);
         await AuthService.getProfile();

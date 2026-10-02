@@ -179,6 +179,7 @@ class EventModel {
   final EventStatus status;
   final int attendeesCount;
   final List<EventAttendeeModel> attendees;
+  final List<String> managerIds;
 
   EventModel({
     required this.id,
@@ -197,7 +198,16 @@ class EventModel {
     this.status = EventStatus.UPCOMING,
     this.attendeesCount = 0,
     this.attendees = const [],
+    this.managerIds = const [],
   });
+
+  bool canUserManageEvent(String? userId, String? userRole) {
+    if (userId == null) return false;
+    final r = (userRole ?? '').toUpperCase();
+    if (r == 'SUPERADMIN' || r == 'ADMIN' || r == 'SUPERVISOR' || r == 'ADMIN_EVENTO') return true;
+    if (createdById == userId) return true;
+    return managerIds.contains(userId);
+  }
 
   bool get isActiveNow {
     final now = DateTime.now();
@@ -232,6 +242,15 @@ class EventModel {
             ? (DateTime.tryParse(json['endDate'].toString())?.toLocal() ?? start.add(const Duration(hours: 1)))
             : start.add(const Duration(hours: 1)));
 
+    // Parse manager_ids (simple-array or list)
+    List<String> parsedManagerIds = [];
+    final rawManagers = json['manager_ids'] ?? json['managerIds'];
+    if (rawManagers is List) {
+      parsedManagerIds = rawManagers.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList();
+    } else if (rawManagers is String && rawManagers.trim().isNotEmpty) {
+      parsedManagerIds = rawManagers.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    }
+
     return EventModel(
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
@@ -255,6 +274,7 @@ class EventModel {
           (json['attendeesCount'] as num?)?.toInt() ??
           attendeesList.length,
       attendees: attendeesList,
+      managerIds: parsedManagerIds,
     );
   }
 
@@ -276,6 +296,7 @@ class EventModel {
       'status': status.name,
       'attendees_count': attendeesCount,
       'attendees': attendees.map((a) => a.toJson()).toList(),
+      'manager_ids': managerIds,
     };
   }
 
@@ -296,6 +317,7 @@ class EventModel {
     EventStatus? status,
     int? attendeesCount,
     List<EventAttendeeModel>? attendees,
+    List<String>? managerIds,
   }) {
     return EventModel(
       id: id ?? this.id,
@@ -314,6 +336,7 @@ class EventModel {
       status: status ?? this.status,
       attendeesCount: attendeesCount ?? this.attendeesCount,
       attendees: attendees ?? this.attendees,
+      managerIds: managerIds ?? this.managerIds,
     );
   }
 }

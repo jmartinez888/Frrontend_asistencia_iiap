@@ -180,14 +180,27 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
   }
 
   Widget _buildAdminUserActions(UserModel u) {
+    final current = StorageService.currentUser;
+    final isSuperAdmin = current?.isSuperAdmin == true;
+    final isAdmin = current?.isAdmin == true;
+
+    // Si es SuperAdmin, no puede ser modificado por otros
+    if (u.isSuperAdmin && !isSuperAdmin) return const SizedBox.shrink();
+
     return PopupMenuButton<String>(
       icon: const Icon(Icons.more_vert_rounded, size: 20, color: Color(0xFF64748B)),
-      tooltip: 'Opciones de Administrador',
+      tooltip: 'Opciones de Gestión',
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (value) {
         switch (value) {
           case 'set_admin':
             _changeUserRole(u, UserRole.ADMIN);
+            break;
+          case 'set_admin_evento':
+            _changeUserRole(u, UserRole.ADMIN_EVENTO);
+            break;
+          case 'set_gestor_evento':
+            _changeUserRole(u, UserRole.GESTOR_EVENTO);
             break;
           case 'set_supervisor':
             _changeUserRole(u, UserRole.SUPERVISOR);
@@ -214,25 +227,47 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
             ],
           ),
         ),
-        if (u.role != UserRole.ADMIN)
+        if (isSuperAdmin && u.role != UserRole.ADMIN)
           const PopupMenuItem<String>(
             value: 'set_admin',
             child: Row(
               children: [
-                Icon(Icons.admin_panel_settings_rounded, size: 18, color: Color(0xFF2D5E2A)),
+                Icon(Icons.military_tech_rounded, size: 18, color: Color(0xFFD97706)),
                 SizedBox(width: 8),
-                Text('Asignar Administrador', style: TextStyle(fontSize: 13)),
+                Text('Designar Admin / Presidente', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
-        if (u.role != UserRole.SUPERVISOR)
+        if (isAdmin && u.role != UserRole.ADMIN_EVENTO)
+          const PopupMenuItem<String>(
+            value: 'set_admin_evento',
+            child: Row(
+              children: [
+                Icon(Icons.event_available_rounded, size: 18, color: Color(0xFF2563EB)),
+                SizedBox(width: 8),
+                Text('Designar Admin de Eventos / UO', style: TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
+        if (isAdmin && u.role != UserRole.GESTOR_EVENTO)
+          const PopupMenuItem<String>(
+            value: 'set_gestor_evento',
+            child: Row(
+              children: [
+                Icon(Icons.campaign_rounded, size: 18, color: Color(0xFF0D9488)),
+                SizedBox(width: 8),
+                Text('Designar Gestor de Eventos / UO', style: TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
+        if (isAdmin && u.role != UserRole.SUPERVISOR)
           const PopupMenuItem<String>(
             value: 'set_supervisor',
             child: Row(
               children: [
-                Icon(Icons.verified_user_rounded, size: 18, color: Color(0xFF2563EB)),
+                Icon(Icons.verified_user_rounded, size: 18, color: Color(0xFF7C3AED)),
                 SizedBox(width: 8),
-                Text('Asignar Supervisor', style: TextStyle(fontSize: 13)),
+                Text('Designar Supervisor', style: TextStyle(fontSize: 13)),
               ],
             ),
           ),
@@ -243,7 +278,7 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
               children: [
                 Icon(Icons.person_outline_rounded, size: 18, color: Color(0xFF64748B)),
                 SizedBox(width: 8),
-                Text('Cambiar a Rol User', style: TextStyle(fontSize: 13)),
+                Text('Cambiar a Rol Colaborador', style: TextStyle(fontSize: 13)),
               ],
             ),
           ),
@@ -445,6 +480,182 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
             child: const Text('Buscar y Eliminar'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showDesignateQrModal() {
+    final current = StorageService.currentUser;
+    final isSuper = current?.isSuperAdmin == true;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF9333EA).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.qr_code_2_rounded, color: Color(0xFF9333EA), size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Designar Rol mediante Código QR',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text('El colaborador escaneará este código para ascender de inmediato',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                if (isSuper)
+                  _buildRoleQrTile(
+                    title: 'Admin / Presidente Institucional',
+                    subtitle: 'Control administrativo, designa Admin y Gestores de eventos',
+                    icon: Icons.military_tech_rounded,
+                    color: const Color(0xFFD97706),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const QrDisplayScreen(
+                            mode: QrMode.roleAssignment,
+                            targetRole: 'ADMIN',
+                            customTitle: 'Designar Admin / Presidente',
+                            customSubtitle: 'El nuevo Presidente escaneará este código con su app',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                _buildRoleQrTile(
+                  title: 'Admin de Eventos / Unidad Organizativa',
+                  subtitle: 'CRUD total de eventos de su UO y gestión de participantes',
+                  icon: Icons.event_available_rounded,
+                  color: const Color(0xFF2563EB),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const QrDisplayScreen(
+                          mode: QrMode.roleAssignment,
+                          targetRole: 'ADMIN_EVENTO',
+                          customTitle: 'Designar Admin de Eventos / UO',
+                          customSubtitle: 'Escanear para otorgar administración de eventos de su UO',
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                _buildRoleQrTile(
+                  title: 'Gestor de Eventos / UO',
+                  subtitle: 'Control operativo de eventos asignados, proyecta QR y asistencia',
+                  icon: Icons.campaign_rounded,
+                  color: const Color(0xFF0D9488),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const QrDisplayScreen(
+                          mode: QrMode.roleAssignment,
+                          targetRole: 'GESTOR_EVENTO',
+                          customTitle: 'Designar Gestor de Eventos / UO',
+                          customSubtitle: 'Escanear para otorgar rol de Gestor de eventos',
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                _buildRoleQrTile(
+                  title: 'Supervisor de Asistencia',
+                  subtitle: 'Control y supervisión de marcas de entrada y salida',
+                  icon: Icons.verified_user_rounded,
+                  color: const Color(0xFF7C3AED),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const QrDisplayScreen(
+                          mode: QrMode.supervisorAssignment,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRoleQrTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: color.withValues(alpha: 0.3)),
+              color: color.withValues(alpha: 0.05),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                      const SizedBox(height: 2),
+                      Text(subtitle, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF94A3B8)),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -993,18 +1204,10 @@ class _SupervisorsTabState extends State<SupervisorsTab> {
                                   ),
                                   icon: const Icon(Icons.qr_code_rounded, size: 20),
                                   label: const Text(
-                                    'Designar Nuevo Supervisor con QR',
+                                    'Designar con QR (Admin, Gestores, Supervisores)',
                                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                   ),
-                                  onPressed: _availableSlots > 0
-                                      ? () {
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (_) => const QrDisplayScreen(mode: QrMode.supervisorAssignment),
-                                            ),
-                                          );
-                                        }
-                                      : null,
+                                  onPressed: _showDesignateQrModal,
                                 ),
                               ),
                             ],

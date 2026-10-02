@@ -8,6 +8,9 @@ import '../../services/storage_service.dart';
 import '../../services/theme_service.dart';
 import '../../utils/responsive.dart';
 import '../qr/qr_scanner_screen.dart';
+import '../qr/qr_display_screen.dart';
+import '../../services/users_service.dart';
+import '../../models/user_model.dart';
 import 'create_event_screen.dart';
 import 'event_certificate_modal.dart';
 import 'event_qr_display_screen.dart';
@@ -29,6 +32,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   late EventModel _currentEvent;
   bool _isLoading = false;
   Timer? _liveRefreshTimer;
+  List<Map<String, dynamic>> _assignedManagers = [];
 
   @override
   void initState() {
@@ -36,6 +40,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     _currentEvent = widget.event;
     EventService.eventsNotifier.addListener(_onEventsUpdated);
     _startLiveRefresh();
+    _loadManagers();
   }
 
   void _startLiveRefresh() {
@@ -64,8 +69,221 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (mounted && (updated != _currentEvent || updated.attendees.length != _currentEvent.attendees.length)) {
       final hadFewer = updated.attendees.length > _currentEvent.attendees.length;
       setState(() => _currentEvent = updated);
+      _loadManagers();
       if (hadFewer) {
         HapticFeedback.lightImpact();
+      }
+    }
+  }
+
+  Future<void> _loadManagers() async {
+    try {
+      final managers = await EventService.getEventManagers(_currentEvent.id);
+      if (mounted) {
+        setState(() => _assignedManagers = managers);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _handleOpenAssignManagerModal() async {
+    List<UserModel> users = [];
+    try {
+      users = await UsersService.findAll();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error cargando colaboradores: $e'), backgroundColor: const Color(0xFFDC2626)),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    String searchFilter = '';
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          final filtered = users.where((u) {
+            final matchesSearch = u.fullName.toLowerCase().contains(searchFilter.toLowerCase()) ||
+                u.email.toLowerCase().contains(searchFilter.toLowerCase());
+            final notCreator = u.id != _currentEvent.createdById;
+            final notAlreadyManager = !_currentEvent.managerIds.contains(u.id);
+            return matchesSearch && notCreator && notAlreadyManager;
+          }).toList();
+
+          return Container(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+            decoration: BoxDecoration(
+              color: ThemeService.cardBg(ctx),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Row(
+                  children: [
+                    Icon(Icons.manage_accounts_rounded, color: Color(0xFF0D9488), size: 24),
+                    SizedBox(width: 10),
+                    Text(
+                      'Asignar Gestor de Evento',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'El usuario seleccionado obtendrá permisos completos para editar, proyectar asistencia y registrar participantes.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  onChanged: (val) => setModalState(() => searchFilter = val.trim()),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar colaborador por nombre o correo...',
+                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                    filled: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 280),
+                  child: filtered.isEmpty
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text(
+                              'No se encontraron colaboradores disponibles para asignar.',
+                              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (ctx, i) {
+                            final u = filtered[i];
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              leading: CircleAvatar(
+                                backgroundColor: const Color(0xFF0D9488).withValues(alpha: 0.15),
+                                child: Text(
+                                  u.fullName.isNotEmpty ? u.fullName[0].toUpperCase() : 'U',
+                                  style: const TextStyle(color: Color(0xFF0D9488), fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              title: Text(u.fullName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                              subtitle: Text('${u.email} • ${u.role.displayName}', style: const TextStyle(fontSize: 11.5)),
+                              trailing: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0D9488),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                onPressed: () async {
+                                  Navigator.of(ctx).pop();
+                                  try {
+                                    await EventService.addEventManager(_currentEvent.id, u.id);
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('¡${u.fullName} ahora es Gestor de este evento!'),
+                                        backgroundColor: const Color(0xFF0D9488),
+                                      ),
+                                    );
+                                    _loadManagers();
+                                    await EventService.getEvents(forceRefresh: true);
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Error al asignar gestor: $e'), backgroundColor: const Color(0xFFDC2626)),
+                                    );
+                                  }
+                                },
+                                child: const Text('Asignar', style: TextStyle(fontSize: 12)),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _handleDesignateManagerQr() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => QrDisplayScreen(
+          mode: QrMode.roleAssignment,
+          targetRole: 'GESTOR_EVENTO',
+          targetEventId: _currentEvent.id,
+          customTitle: 'Designar Gestor del Evento',
+          customSubtitle: 'El usuario escaneará para asumir el control operativo de este evento',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleRemoveManager(String userId, String userName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Revocar Gestor de Evento'),
+        content: Text('¿Deseas retirar a $userName como gestor de este evento?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Sí, Retirar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await EventService.removeEventManager(_currentEvent.id, userId);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$userName ya no es gestor de este evento.')),
+        );
+        _loadManagers();
+        await EventService.getEvents(forceRefresh: true);
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al retirar gestor: $e'), backgroundColor: const Color(0xFFDC2626)),
+        );
       }
     }
   }
@@ -449,9 +667,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final isSuperAdmin = currentUser?.isSuperAdmin == true;
     final isAdmin = currentUser?.isAdmin == true || isSuperAdmin;
     final isSupervisor = currentUser?.isSupervisor == true;
-    final canManage = currentUser?.canManageEvents == true || isSuperAdmin || isAdmin;
-    final canProjectQr = currentUser?.canManageEvents == true || isSuperAdmin || isAdmin;
-    final canScanAttendance = !isAdmin && !isSuperAdmin;
+    final isAssignedManager = currentUser != null && _currentEvent.managerIds.contains(currentUser.id);
+    final canManage = currentUser?.canManageEvents == true || isSuperAdmin || isAdmin || isAssignedManager;
+    final canProjectQr = currentUser?.canManageEvents == true || isSuperAdmin || isAdmin || isAssignedManager;
+    final canScanAttendance = !isAdmin && !isSuperAdmin && !isAssignedManager;
     final isAlreadyRegistered = currentUser != null && _currentEvent.isUserRegistered(currentUser.id);
 
     return Scaffold(
@@ -902,6 +1121,168 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
+                ],
+
+                // 2.5 Tarjeta destacada: Gestores del Evento (Sin Límites)
+                if (canManage) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [const Color(0xFF132A27), const Color(0xFF0F172A)]
+                            : [const Color(0xFFF0FDF4), const Color(0xFFDCFCE7)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: const Color(0xFF0D9488).withValues(alpha: isDark ? 0.5 : 0.35),
+                        width: 1.3,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF0D9488).withValues(alpha: 0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0D9488).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF0D9488), size: 22),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'Gestores del Evento',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            color: isDark ? Colors.white : const Color(0xFF134E4A),
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF0D9488).withValues(alpha: 0.18),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Text(
+                                          '${_currentEvent.managerIds.length} Asignados · Sin Límites',
+                                          style: const TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF0D9488),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Colaboradores facultados para administrar el evento, proyectar códigos QR y tomar asistencias.',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      height: 1.35,
+                                      color: isDark ? const Color(0xFF99F6E4) : const Color(0xFF115E59),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_assignedManagers.isNotEmpty) ...[
+                          const SizedBox(height: 14),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _assignedManagers.map((m) {
+                              final name = m['full_name'] ?? m['name'] ?? 'Gestor';
+                              final userId = m['id'] ?? '';
+                              return Chip(
+                                avatar: CircleAvatar(
+                                  backgroundColor: const Color(0xFF0D9488),
+                                  child: Text(
+                                    name.isNotEmpty ? name[0].toUpperCase() : 'G',
+                                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                label: Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                deleteIcon: const Icon(Icons.close_rounded, size: 16),
+                                onDeleted: () => _handleRemoveManager(userId, name),
+                                backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                side: BorderSide(color: const Color(0xFF0D9488).withValues(alpha: 0.3)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              );
+                            }).toList(),
+                          ),
+                        ] else ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Actualmente no hay gestores adicionales. Agrega colaboradores sin límites para apoyar en el evento.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontStyle: FontStyle.italic,
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0D9488),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                onPressed: _handleOpenAssignManagerModal,
+                                icon: const Icon(Icons.person_add_rounded, size: 17),
+                                label: const Text('+ Asignar Gestor', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF0D9488),
+                                  side: const BorderSide(color: Color(0xFF0D9488)),
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                onPressed: _handleDesignateManagerQr,
+                                icon: const Icon(Icons.qr_code_2_rounded, size: 17),
+                                label: const Text('Designar con QR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
                 ],
 
                 // 3. Tarjeta destacada: Registro Presencial para personas sin celular

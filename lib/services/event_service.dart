@@ -433,6 +433,53 @@ class EventService {
     return updatedEvent;
   }
 
+  /// Obtiene los gestores asignados al evento
+  static Future<List<Map<String, dynamic>>> getEventManagers(String eventId) async {
+    try {
+      final response = await ApiClient.get(ApiConfig.eventManagers(eventId));
+      if (response != null && response is List) {
+        return response.whereType<Map<String, dynamic>>().toList();
+      }
+    } catch (e) {
+      debugPrint('Error obteniendo gestores de evento: $e');
+    }
+    return [];
+  }
+
+  /// Asigna un nuevo gestor al evento (sin límite)
+  static Future<void> addEventManager(String eventId, String userId) async {
+    await ApiClient.post(ApiConfig.eventManagers(eventId), body: {
+      'user_id': userId,
+    });
+    final list = List<EventModel>.from(eventsNotifier.value);
+    final idx = list.indexWhere((e) => e.id == eventId);
+    if (idx != -1) {
+      final evt = list[idx];
+      if (!evt.managerIds.contains(userId)) {
+        final updated = evt.copyWith(managerIds: [...evt.managerIds, userId]);
+        list[idx] = updated;
+        eventsNotifier.value = list;
+        await _saveToLocalCache(list);
+      }
+    }
+  }
+
+  /// Remueve un gestor asignado al evento
+  static Future<void> removeEventManager(String eventId, String userId) async {
+    await ApiClient.delete(ApiConfig.eventRemoveManager(eventId, userId));
+    final list = List<EventModel>.from(eventsNotifier.value);
+    final idx = list.indexWhere((e) => e.id == eventId);
+    if (idx != -1) {
+      final evt = list[idx];
+      final updated = evt.copyWith(
+        managerIds: evt.managerIds.where((id) => id != userId).toList(),
+      );
+      list[idx] = updated;
+      eventsNotifier.value = list;
+      await _saveToLocalCache(list);
+    }
+  }
+
   // --- Helpers de Caché Local ---
 
   static Future<void> _saveToLocalCache(List<EventModel> events) async {

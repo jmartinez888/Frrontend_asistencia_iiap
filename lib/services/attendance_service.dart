@@ -25,6 +25,33 @@ class AttendanceService {
     return QrGeneratedResponse.fromJson(response as Map<String, dynamic>);
   }
 
+  // 2.1 Generar QR para designar roles jerárquicos (ADMIN, ADMIN_EVENTO, GESTOR_EVENTO, etc.)
+  static Future<Map<String, dynamic>> generateAssignmentQr({
+    required String targetRole,
+    String? targetEventId,
+  }) async {
+    final body = <String, dynamic>{
+      'target_role': targetRole,
+    };
+    if (targetEventId != null && targetEventId.isNotEmpty) {
+      body['target_event_id'] = targetEventId;
+    }
+    final response = await ApiClient.post(
+      ApiConfig.attendanceGenerateAssignmentQr,
+      body: body,
+    );
+    return response as Map<String, dynamic>;
+  }
+
+  // 2.2 Escanear QR de asignación de rol o gestor de evento
+  static Future<Map<String, dynamic>> scanAssignmentQr(String qrCode) async {
+    final response = await ApiClient.post(
+      ApiConfig.attendanceScanAssignmentQr,
+      body: {'qr_code': qrCode.trim()},
+    );
+    return response as Map<String, dynamic>;
+  }
+
   // 3. Escaneo de QR de Asistencia para registrar Entrada o Salida
   static Future<AttendanceScanResult> scanAttendanceQr({
     required String qrCode,
