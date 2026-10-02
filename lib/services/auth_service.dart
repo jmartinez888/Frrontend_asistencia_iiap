@@ -7,6 +7,7 @@ import '../config/api_config.dart';
 import '../models/user_model.dart';
 import 'api_client.dart';
 import 'storage_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   static Future<UserModel> login({
@@ -175,7 +176,47 @@ class AuthService {
     return user;
   }
 
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId: ApiConfig.googleServerClientId,
+    scopes: ['email', 'profile'],
+  );
+
+  /// Inicia sesion o registra al usuario mediante Google OAuth2
+  static Future<UserModel?> loginWithGoogle() async {
+    try {
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return null;
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw ApiException('No se pudo obtener el token de verificacion de Google.');
+      }
+      final response = await ApiClient.post(
+        ApiConfig.authGoogle,
+        body: {'idToken': idToken},
+        requiresAuth: false,
+      );
+      final token = response['access_token']?.toString() ?? '';
+      final userJson = response['user'] as Map<String, dynamic>;
+      final user = UserModel.fromJson(userJson);
+      await StorageService.saveSession(
+        token: token,
+        user: user,
+        email: user.email,
+      );
+      return user;
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      debugPrint('Error en login con Google: $e');
+      throw ApiException('Error al iniciar sesion con Google: ' + e.toString().replaceAll('Exception:', '').trim());
+    }
+  }
+
   static Future<void> logout() async {
+    try { await _googleSignIn.signOut(); } catch (_) {}
     await StorageService.clearSession();
   }
 

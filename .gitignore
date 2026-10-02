@@ -46,3 +46,6 @@ app.*.map.json
 
 # Build artifacts downloaded from CI
 build_artifacts*/
+
+*.apk
+Control Asistencia.apk
