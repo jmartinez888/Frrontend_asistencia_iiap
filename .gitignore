@@ -49,3 +49,6 @@ build_artifacts*/
 
 *.apk
 Control Asistencia.apk
+
+*.ipa
+Control Asistencia.ipa
