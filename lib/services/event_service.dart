@@ -69,6 +69,7 @@ class EventService {
     required DateTime endDate,
     required EventType type,
     required bool requiresAttendance,
+    String? organizationalUnit,
   }) async {
     final currentUser = StorageService.currentUser;
     if (currentUser == null || !currentUser.canManageAttendanceQr) {
@@ -95,6 +96,7 @@ class EventService {
       status: EventStatus.UPCOMING,
       attendeesCount: 0,
       attendees: [],
+      organizationalUnit: organizationalUnit?.trim(),
     );
 
     // Intentar guardar en backend
@@ -108,6 +110,8 @@ class EventService {
         'type': type.name,
         'requires_attendance': requiresAttendance,
         'qr_code': qrToken,
+        if (organizationalUnit != null && organizationalUnit.trim().isNotEmpty)
+          'organizational_unit': organizationalUnit.trim(),
       };
       final res = await ApiClient.post(
         ApiConfig.eventsAll,
@@ -145,6 +149,8 @@ class EventService {
         'type': event.type.name,
         'requires_attendance': event.requiresAttendance,
         'status': event.status.name,
+        if (event.organizationalUnit != null)
+          'organizational_unit': event.organizationalUnit,
       };
       final res = await ApiClient.patch(
         ApiConfig.eventById(event.id),

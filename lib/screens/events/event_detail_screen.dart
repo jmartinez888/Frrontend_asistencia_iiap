@@ -732,27 +732,57 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: ThemeService.primaryColor(context).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.event_rounded, size: 14, color: ThemeService.primaryColor(context)),
-                                const SizedBox(width: 5),
-                                Text(
-                                  _currentEvent.type.displayName,
-                                  style: TextStyle(
-                                    color: ThemeService.primaryColor(context),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: ThemeService.primaryColor(context).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.event_rounded, size: 14, color: ThemeService.primaryColor(context)),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      _currentEvent.type.displayName,
+                                      style: TextStyle(
+                                        color: ThemeService.primaryColor(context),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (_currentEvent.organizationalUnit != null &&
+                                  _currentEvent.organizationalUnit!.trim().isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2563EB).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.apartment_rounded, size: 14, color: Color(0xFF2563EB)),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        'UO: ${_currentEvent.organizationalUnit!.trim()}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF2563EB),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
+                            ],
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

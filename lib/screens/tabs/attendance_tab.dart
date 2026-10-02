@@ -842,6 +842,72 @@ class _AttendanceTabState extends State<AttendanceTab> with TickerProviderStateM
               ),
             ),
             actions: [
+              if (journey.checkIn != null || journey.checkOut != null)
+                TextButton.icon(
+                  style: TextButton.styleFrom(foregroundColor: const Color(0xFFEF4444)),
+                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                  label: const Text('Eliminar Marca'),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final scaffoldMessenger = ScaffoldMessenger.of(context);
+                          final nav = Navigator.of(ctx);
+
+                          final confirmDelete = await showDialog<bool>(
+                            context: context,
+                            builder: (deleteCtx) => AlertDialog(
+                              title: const Text('¿Eliminar Asistencia?'),
+                              content: Text(
+                                '¿Deseas eliminar este registro de asistencia de ${journey.userName} correspondiente al turno ${journey.shift == AttendanceShift.MORNING ? "Mañana" : "Tarde"} del ${journey.workDate}?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(deleteCtx).pop(false),
+                                  child: const Text('Cancelar'),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+                                  onPressed: () => Navigator.of(deleteCtx).pop(true),
+                                  child: const Text('Sí, Eliminar', style: TextStyle(color: Colors.white)),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirmDelete == true) {
+                            setDialogState(() => isSubmitting = true);
+
+                            try {
+                              if (journey.checkIn != null) {
+                                await AttendanceService.deleteAttendanceRecord(journey.checkIn!.id);
+                              }
+                              if (journey.checkOut != null && journey.checkOut?.id != journey.checkIn?.id) {
+                                await AttendanceService.deleteAttendanceRecord(journey.checkOut!.id);
+                              }
+                              nav.pop();
+                              scaffoldMessenger.showSnackBar(
+                                const SnackBar(
+                                  backgroundColor: Colors.green,
+                                  content: Text('Registro de asistencia eliminado exitosamente.'),
+                                ),
+                              );
+                              if (mounted) {
+                                _loadAllRecords();
+                                _loadPendingCheckouts();
+                                _loadMyRecords();
+                              }
+                            } catch (e) {
+                              setDialogState(() => isSubmitting = false);
+                              scaffoldMessenger.showSnackBar(
+                                SnackBar(
+                                  backgroundColor: Colors.red,
+                                  content: Text('Error al eliminar registro: $e'),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                ),
               TextButton(
                 onPressed: isSubmitting ? null : () => Navigator.of(ctx).pop(),
                 child: const Text('Cancelar'),
