@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'storage_service.dart';
 import '../config/api_config.dart';
 import '../models/attendance_model.dart';
 import '../models/qr_model.dart';
@@ -261,5 +263,75 @@ class AttendanceService {
   /// Eliminar un registro de asistencia
   static Future<void> deleteRecord(String id) async {
     await ApiClient.delete(ApiConfig.attendanceById(id));
+  }
+
+  /// 9. Escaneo de asistencia mediante camara en tiempo real (OpenCV + InsightFace)
+  static Future<Map<String, dynamic>> scanAttendanceWebcam() async {
+    final token = await StorageService.getToken();
+    final url = Uri.parse(ApiConfig.facialScanWebcam);
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'auth_token': token,
+          'camera_index': 0,
+        }),
+      ).timeout(const Duration(minutes: 5));
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'No se pudo conectar con el servicio facial ($e). Asegurate de que el servicio Python este activo.',
+      };
+    }
+  }
+
+  /// 10. Escaneo de asistencia enviando imagen capturada por la camara
+  static Future<Map<String, dynamic>> scanAttendanceImage(String base64Image) async {
+    final token = await StorageService.getToken();
+    final url = Uri.parse(ApiConfig.facialScanImage);
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'image_base64': base64Image,
+          'auth_token': token,
+        }),
+      ).timeout(const Duration(seconds: 30));
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error enviando imagen al servicio facial: $e',
+      };
+    }
+  }
+
+  /// 11. Registrar asistencia facial directamente en el Backend (Solo ADMIN)
+  static Future<Map<String, dynamic>> recordFacialAttendance({
+    required String userIdentifier,
+    String? userName,
+    double? similarity,
+    AttendanceType? type,
+    double? latitude,
+    double? longitude,
+    String? deviceId,
+    String? observation,
+  }) async {
+    final body = <String, dynamic>{
+      'user_identifier': userIdentifier,
+      if (userName != null) 'user_name': userName,
+      if (similarity != null) 'similarity': similarity,
+      if (type != null) 'type': type.name,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      'device_id': deviceId ?? 'device-camera-scanner',
+      if (observation != null) 'observation': observation,
+    };
+
+    final response = await ApiClient.post(ApiConfig.attendanceFacialRecord, body: body);
+    return response as Map<String, dynamic>;
   }
 }

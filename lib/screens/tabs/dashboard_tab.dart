@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
+import '../../services/attendance_service.dart';
 import 'package:flutter/material.dart';
 import '../../utils/responsive.dart';
 import '../../models/user_model.dart';
@@ -60,7 +63,7 @@ class _DashboardTabState extends State<DashboardTab> {
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
           ),
           content: const Text(
-            'La función Generar QR con cifrado SHA-256 está reservada exclusivamente para el Administrador y los 3 Supervisores autorizados para la toma de asistencia.',
+            'La funci├│n Generar QR con cifrado SHA-256 est├í reservada exclusivamente para el Administrador y los 3 Supervisores autorizados para la toma de asistencia.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, height: 1.4),
           ),
@@ -238,7 +241,7 @@ class _DashboardTabState extends State<DashboardTab> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      isOnline ? 'En línea' : 'Desconectado',
+                                      isOnline ? 'En l├¡nea' : 'Desconectado',
                                       style: TextStyle(
                                         color: isOnline ? Colors.white : const Color(0xFFFEE2E2),
                                         fontSize: 10.5,
@@ -303,7 +306,7 @@ class _DashboardTabState extends State<DashboardTab> {
 
                 const SizedBox(height: 22),
 
-                // Sección de Botones Principales: Generar QR y Escanear QR
+                // Secci├│n de Botones Principales: Generar QR y Escanear QR
                 Row(
                   children: [
                     Expanded(
@@ -345,9 +348,9 @@ class _DashboardTabState extends State<DashboardTab> {
                 const SizedBox(height: 12),
 
                 // ACCIONES CONDICIONALES POR ROL:
-                // - Administrador: SOLO botón "Generar QR"
+                // - Administrador: SOLO bot├│n "Generar QR"
                 // - Supervisores: AMBOS botones ("Generar QR" y "Escanear QR" para marcar su propia asistencia)
-                // - Personal regular: SOLO botón "Escanear QR"
+                // - Personal regular: SOLO bot├│n "Escanear QR"
                 if (user.isSupervisor && Responsive.isTablet(context)) ...[
                   Row(
                     children: [
@@ -355,7 +358,7 @@ class _DashboardTabState extends State<DashboardTab> {
                         child: _buildActionCard(
                           context,
                           title: 'Generar QR de Asistencia',
-                          subtitle: 'Emisión con cifrado SHA-256 (Rotación automática)',
+                          subtitle: 'Emisi├│n con cifrado SHA-256 (Rotaci├│n autom├ítica)',
                           icon: Icons.qr_code_2_rounded,
                           color: const Color(0xFF16A34A),
                           badgeText: 'SHA-256',
@@ -372,7 +375,7 @@ class _DashboardTabState extends State<DashboardTab> {
                           subtitle: 'Registra tu asistencia escaneando el QR institucional',
                           icon: Icons.qr_code_scanner_rounded,
                           color: const Color(0xFF2563EB),
-                          badgeText: 'CÁMARA',
+                          badgeText: 'C├üMARA',
                           badgeColor: const Color(0xFF2563EB),
                           isLocked: false,
                           onTap: () => _handleEscanearQr(context),
@@ -385,7 +388,7 @@ class _DashboardTabState extends State<DashboardTab> {
                     _buildActionCard(
                       context,
                       title: 'Generar QR de Asistencia',
-                      subtitle: 'Emisión institucional con cifrado SHA-256 (Rotación automática)',
+                      subtitle: 'Emisi├│n institucional con cifrado SHA-256 (Rotaci├│n autom├ítica)',
                       icon: Icons.qr_code_2_rounded,
                       color: const Color(0xFF16A34A),
                       badgeText: 'SHA-256',
@@ -394,15 +397,29 @@ class _DashboardTabState extends State<DashboardTab> {
                       onTap: () => _handleGenerarQr(context, user),
                     ),
                     if (user.isSupervisor) const SizedBox(height: 12),
+                    if (user.isAdmin) ...[
+                      const SizedBox(height: 12),
+                      _buildActionCard(
+                        context,
+                        title: 'Escanear Asistencia',
+                        subtitle: 'Reconocimiento biométrico facial con cámara (InsightFace)',
+                        icon: Icons.face_retouching_natural_rounded,
+                        color: const Color(0xFF7C3AED),
+                        badgeText: 'BIOMETRÍA',
+                        badgeColor: const Color(0xFF7C3AED),
+                        isLocked: false,
+                        onTap: () => _handleEscanearAsistenciaFacial(context),
+                      ),
+                    ],
                   ],
                   if (!user.isAdmin) ...[
                     _buildActionCard(
                       context,
                       title: 'Escanear QR',
-                      subtitle: 'Registra tu asistencia escaneando el código QR institucional',
+                      subtitle: 'Registra tu asistencia escaneando el c├│digo QR institucional',
                       icon: Icons.qr_code_scanner_rounded,
                       color: const Color(0xFF2563EB),
-                      badgeText: 'CÁMARA',
+                      badgeText: 'C├üMARA',
                       badgeColor: const Color(0xFF2563EB),
                       isLocked: false,
                       onTap: () => _handleEscanearQr(context),
@@ -412,7 +429,7 @@ class _DashboardTabState extends State<DashboardTab> {
 
                 const SizedBox(height: 22),
 
-                // Sección Eventos Institucionales
+                // Secci├│n Eventos Institucionales
                 _buildEventsSection(context, user),
 
                 const SizedBox(height: 24),
@@ -673,7 +690,7 @@ class _DashboardTabState extends State<DashboardTab> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  featuredEvent.isActiveNow ? 'En curso' : 'Próximo',
+                                  featuredEvent.isActiveNow ? 'En curso' : 'Pr├│ximo',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
@@ -801,6 +818,295 @@ class _DashboardTabState extends State<DashboardTab> {
           ],
         );
       },
+    );
+  }
+
+  void _handleEscanearAsistenciaFacial(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7C3AED).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.face_retouching_natural_rounded,
+                        color: Color(0xFF7C3AED),
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Control Biométrico Facial',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'InsightFace ArcFace (buffalo_l) + OpenCV',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.videocam_rounded, color: Color(0xFF10B981)),
+                  ),
+                  title: const Text('Escanear en Vivo (Cámara en tiempo real)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: const Text('Abre la cámara con detección facial continua y registro automático', style: TextStyle(fontSize: 12)),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showWebcamHUDDialog(context);
+                  },
+                ),
+                const Divider(height: 16),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.camera_alt_rounded, color: Color(0xFF2563EB)),
+                  ),
+                  title: const Text('Tomar Foto de Asistencia', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: const Text('Captura una fotografía y valida contra el dataset de Christopher', style: TextStyle(fontSize: 12)),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _capturePhotoAndScanFacial(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showWebcamHUDDialog(BuildContext context) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(color: Color(0xFF7C3AED)),
+            SizedBox(width: 20),
+            Expanded(
+              child: Text(
+                'Iniciando cámara con InsightFace...\nPor favor ubica tu rostro frente al visor.',
+                style: TextStyle(fontSize: 13.5),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final res = await AttendanceService.scanAttendanceWebcam();
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      if (res['success'] == true && res['matched'] == true) {
+        _showFacialSuccessDialog(
+          userName: res['user']?['name'] ?? 'Christopher Rengifo',
+          similarity: (res['similarity_percent'] ?? 85.0).toDouble(),
+          timestamp: DateTime.now().toString(),
+        );
+      } else {
+        _showFacialErrorDialog(
+          res['message'] ?? 'No se identificó ningún rostro con la coincidencia requerida.',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      _showFacialErrorDialog('Error al conectar con la cámara: $e');
+    }
+  }
+
+  Future<void> _capturePhotoAndScanFacial(BuildContext context) async {
+    final picker = ImagePicker();
+    try {
+      final photo = await picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.front,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
+      if (photo == null) return;
+
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: Color(0xFF7C3AED)),
+              SizedBox(width: 20),
+              Expanded(
+                child: Text(
+                  'Procesando vector con InsightFace...',
+                  style: TextStyle(fontSize: 13.5),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final bytes = await photo.readAsBytes();
+      final base64Image = base64Encode(bytes);
+
+      final res = await AttendanceService.scanAttendanceImage(base64Image);
+      if (mounted) Navigator.pop(context);
+
+      if (res['success'] == true && res['matched'] == true) {
+        _showFacialSuccessDialog(
+          userName: res['user']?['name'] ?? 'Christopher Rengifo',
+          similarity: (res['similarity_percent'] ?? 85.0).toDouble(),
+          timestamp: DateTime.now().toString(),
+        );
+      } else {
+        _showFacialErrorDialog(
+          res['message'] ?? 'Rostro no coincide con el dataset de Christopher.',
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      _showFacialErrorDialog('Error al capturar imagen: $e');
+    }
+  }
+
+  void _showFacialSuccessDialog({
+    required String userName,
+    required double similarity,
+    required String timestamp,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        icon: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: const BoxDecoration(
+            color: Color(0xFFD1FAE5),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 44),
+        ),
+        title: const Text(
+          '¡Asistencia Registrada!',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              userName,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Coincidencia Biométrica: ${similarity.toStringAsFixed(1)}%',
+                style: const TextStyle(
+                  color: Color(0xFF7C3AED),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'La asistencia fue validada con InsightFace y registrada en el sistema.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12.5, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Aceptar', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFacialErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: const BoxDecoration(
+            color: Color(0xFFFEE2E2),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 36),
+        ),
+        title: const Text(
+          'Aviso de Escaneo Facial',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        content: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
     );
   }
 }

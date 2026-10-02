@@ -1,4 +1,4 @@
-import 'package:shared_preferences/shared_preferences.dart';
+﻿import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiConfig {
   static const String _customHostKey = 'custom_backend_host';
@@ -67,6 +67,13 @@ class ApiConfig {
 
   static String get attendanceGenerateAssignmentQr => '$baseUrl/attendance/generate-assignment-qr';
   static String get attendanceScanAssignmentQr => '$baseUrl/attendance/scan-assignment-qr';
+  static String get attendanceFacialRecord => '$baseUrl/attendance/facial-record';
+
+  // Rutas del Servicio Biometrico Facial (Python - InsightFace & OpenCV)
+  static String get facialServiceBaseUrl => 'http://192.168.1.214:8000';
+  static String get facialScanWebcam => '$facialServiceBaseUrl/api/scan/webcam';
+  static String get facialScanImage => '$facialServiceBaseUrl/api/scan/image';
+  static String get facialStatus => '$facialServiceBaseUrl/api/status';
 
   // Rutas de Eventos
   static String get eventsAll => '$baseUrl/events';
@@ -86,4 +93,5 @@ class ApiConfig {
     return '$domain/registro.html?id=$eventId';
   }
 }
+
 
