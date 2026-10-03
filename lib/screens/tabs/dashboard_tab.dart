@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import '../../config/api_config.dart';
 import '../../services/attendance_service.dart';
 import 'package:flutter/material.dart';
 import '../../utils/responsive.dart';
@@ -865,28 +867,17 @@ class _DashboardTabState extends State<DashboardTab> {
                           ),
                         ],
                       ),
+                    IconButton(
+                      icon: const Icon(Icons.settings_outlined, color: Color(0xFF7C3AED)),
+                      tooltip: 'Configurar IP del Servidor Facial',
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _showFacialServiceConfigDialog(context);
+                      },
                     ),
                   ],
                 ),
                 const SizedBox(height: 18),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.videocam_rounded, color: Color(0xFF10B981)),
-                  ),
-                  title: const Text('Escanear en Vivo (Cámara en tiempo real)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                  subtitle: const Text('Abre la cámara con detección facial continua y registro automático', style: TextStyle(fontSize: 12)),
-                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _showWebcamHUDDialog(context);
-                  },
-                ),
-                const Divider(height: 16),
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
@@ -896,12 +887,30 @@ class _DashboardTabState extends State<DashboardTab> {
                     ),
                     child: const Icon(Icons.camera_alt_rounded, color: Color(0xFF2563EB)),
                   ),
-                  title: const Text('Tomar Foto de Asistencia', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                  subtitle: const Text('Captura una fotografía y valida contra el dataset de Christopher', style: TextStyle(fontSize: 12)),
+                  title: const Text('Tomar Foto con este Dispositivo (iPad / Móvil)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: const Text('Usa la cámara frontal/trasera del iPad para capturar el rostro y validarlo con InsightFace', style: TextStyle(fontSize: 12)),
                   trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                   onTap: () {
                     Navigator.pop(ctx);
                     _capturePhotoAndScanFacial(context);
+                  },
+                ),
+                const Divider(height: 16),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.desktop_windows_rounded, color: Color(0xFF10B981)),
+                  ),
+                  title: const Text('Escanear en Estación PC (Webcam en vivo)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: const Text('Activa la cámara física conectada al computador para escaneo continuo con OpenCV', style: TextStyle(fontSize: 12)),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showWebcamHUDDialog(context);
                   },
                 ),
               ],
@@ -1107,6 +1116,143 @@ class _DashboardTabState extends State<DashboardTab> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showFacialServiceConfigDialog(BuildContext context) {
+    final controller = TextEditingController(text: ApiConfig.facialServiceBaseUrl);
+    String? statusMessage;
+    bool isChecking = false;
+    bool? isOnline;
+
+    showDialog(
+      context: context,
+      builder: (dlgCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.tune_rounded, color: Color(0xFF7C3AED)),
+                  SizedBox(width: 10),
+                  Text('Configuración Facial', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Dirección IP del Servicio Facial (Python / FastAPI):',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: controller,
+                      decoration: InputDecoration(
+                        hintText: 'http://192.168.1.214:8000',
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    if (isChecking)
+                      const Center(child: Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator(strokeWidth: 2)))
+                    else if (statusMessage != null)
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: (isOnline == true ? Colors.green : Colors.red).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: isOnline == true ? Colors.green : Colors.red),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(isOnline == true ? Icons.check_circle_rounded : Icons.error_rounded,
+                                color: isOnline == true ? Colors.green : Colors.red, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                statusMessage!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isOnline == true ? Colors.green.shade700 : Colors.red.shade700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 14),
+                    OutlinedButton.icon(
+                      onPressed: isChecking
+                          ? null
+                          : () async {
+                              setDialogState(() {
+                                isChecking = true;
+                                statusMessage = null;
+                              });
+                              try {
+                                final testUrl = Uri.parse('${controller.text.trim()}/api/status');
+                                final res = await http.get(testUrl).timeout(const Duration(seconds: 5));
+                                if (res.statusCode == 200) {
+                                  final data = jsonDecode(res.body);
+                                  setDialogState(() {
+                                    isChecking = false;
+                                    isOnline = true;
+                                    statusMessage = 'Conexión exitosa. Enrolados: ${data['enrolled_users_count'] ?? 1}';
+                                  });
+                                } else {
+                                  setDialogState(() {
+                                    isChecking = false;
+                                    isOnline = false;
+                                    statusMessage = 'El servidor respondió con código ${res.statusCode}';
+                                  });
+                                }
+                              } catch (e) {
+                                setDialogState(() {
+                                  isChecking = false;
+                                  isOnline = false;
+                                  statusMessage = 'No se pudo conectar ($e).\nVerifica la IP y que Windows Firewall permita el puerto 8000.';
+                                });
+                              }
+                            },
+                      icon: const Icon(Icons.wifi_tethering_rounded, size: 18),
+                      label: const Text('Probar Conexión', style: TextStyle(fontSize: 12.5)),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        minimumSize: const Size.fromHeight(38),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dlgCtx),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7C3AED),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () async {
+                    await ApiConfig.setCustomFacialBaseUrl(controller.text.trim());
+                    if (context.mounted) Navigator.pop(dlgCtx);
+                  },
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

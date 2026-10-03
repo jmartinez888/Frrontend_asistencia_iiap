@@ -288,7 +288,8 @@ class AttendanceService {
     } catch (e) {
       return {
         'success': false,
-        'message': 'No se pudo conectar con el servicio facial ($e). Asegurate de que el servicio Python este activo.',
+        'message': 'No se pudo conectar con el servicio facial (${ApiConfig.facialServiceBaseUrl}): $e.\n\n'
+            'Verifica que el servicio Python esté activo en la PC y que la red Wi-Fi esté en modo Red Privada en Windows.',
       };
     }
   }
@@ -305,12 +306,13 @@ class AttendanceService {
           'image_base64': base64Image,
           'auth_token': token,
         }),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 40));
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } catch (e) {
       return {
         'success': false,
-        'message': 'Error enviando imagen al servicio facial: $e',
+        'message': 'No se pudo conectar con el servicio facial (${ApiConfig.facialServiceBaseUrl}): $e.\n\n'
+            'Asegúrate de que el servicio Python esté activo en la PC y que el iPad esté conectado a la misma red Wi-Fi.',
       };
     }
   }

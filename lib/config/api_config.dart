@@ -1,7 +1,8 @@
-﻿import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiConfig {
   static const String _customHostKey = 'custom_backend_host';
+  static const String _customFacialHostKey = 'custom_facial_host';
 
   // Obtiene la URL base adecuada según el entorno de ejecución
   static String get defaultBaseUrl {
@@ -10,11 +11,13 @@ class ApiConfig {
 
   static const String localWifiUrl = 'http://192.168.1.108:3000/api';
   static const String androidEmulatorUrl = 'http://10.0.2.2:3000/api';
-
+  static const String defaultFacialBaseUrl = 'http://192.168.1.214:8000';
 
   static String _currentBaseUrl = defaultBaseUrl;
+  static String _currentFacialBaseUrl = defaultFacialBaseUrl;
 
   static String get baseUrl => _currentBaseUrl;
+  static String get facialServiceBaseUrl => _currentFacialBaseUrl;
 
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
@@ -23,6 +26,13 @@ class ApiConfig {
       _currentBaseUrl = saved.trim();
     } else {
       _currentBaseUrl = defaultBaseUrl;
+    }
+
+    final savedFacial = prefs.getString(_customFacialHostKey);
+    if (savedFacial != null && savedFacial.trim().isNotEmpty) {
+      _currentFacialBaseUrl = savedFacial.trim();
+    } else {
+      _currentFacialBaseUrl = defaultFacialBaseUrl;
     }
   }
 
@@ -34,6 +44,17 @@ class ApiConfig {
       await prefs.remove(_customHostKey);
     } else {
       await prefs.setString(_customHostKey, trimmed);
+    }
+  }
+
+  static Future<void> setCustomFacialBaseUrl(String url) async {
+    final trimmed = url.trim();
+    _currentFacialBaseUrl = trimmed.isEmpty ? defaultFacialBaseUrl : trimmed;
+    final prefs = await SharedPreferences.getInstance();
+    if (trimmed.isEmpty) {
+      await prefs.remove(_customFacialHostKey);
+    } else {
+      await prefs.setString(_customFacialHostKey, trimmed);
     }
   }
 
@@ -72,7 +93,6 @@ class ApiConfig {
   static String get attendanceFacialRecord => '$baseUrl/attendance/facial-record';
 
   // Rutas del Servicio Biometrico Facial (Python - InsightFace & OpenCV)
-  static String get facialServiceBaseUrl => 'http://192.168.1.214:8000';
   static String get facialScanWebcam => '$facialServiceBaseUrl/api/scan/webcam';
   static String get facialScanImage => '$facialServiceBaseUrl/api/scan/image';
   static String get facialStatus => '$facialServiceBaseUrl/api/status';
