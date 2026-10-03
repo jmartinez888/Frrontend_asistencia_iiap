@@ -867,6 +867,7 @@ class _DashboardTabState extends State<DashboardTab> {
                           ),
                         ],
                       ),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.settings_outlined, color: Color(0xFF7C3AED)),
                       tooltip: 'Configurar IP del Servidor Facial',
