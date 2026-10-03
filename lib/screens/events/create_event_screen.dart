@@ -22,6 +22,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _titleController;
+  late TextEditingController _uoController;
   late TextEditingController _descriptionController;
   late TextEditingController _locationController;
 
@@ -41,6 +42,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     final now = DateTime.now();
 
     _titleController = TextEditingController(text: edit?.title ?? '');
+    _uoController = TextEditingController(text: edit?.organizationalUnit ?? '');
     _descriptionController = TextEditingController(text: edit?.description ?? '');
     _locationController = TextEditingController(text: edit?.location ?? 'IIAP - Sede Central');
 
@@ -60,6 +62,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   @override
   void dispose() {
     _titleController.dispose();
+    _uoController.dispose();
     _descriptionController.dispose();
     _locationController.dispose();
     super.dispose();
@@ -152,6 +155,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     setState(() => _isSubmitting = true);
 
     try {
+      final uoText = _uoController.text.trim();
+      final uoVal = uoText.isNotEmpty ? uoText : null;
+
       if (widget.eventToEdit != null) {
         final updated = widget.eventToEdit!.copyWith(
           title: _titleController.text.trim(),
@@ -161,6 +167,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           endDate: end,
           type: _selectedType,
           requiresAttendance: _requiresAttendance,
+          organizationalUnit: uoVal,
         );
         await EventService.updateEvent(updated);
         if (!mounted) return;
@@ -179,6 +186,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           endDate: end,
           type: _selectedType,
           requiresAttendance: _requiresAttendance,
+          organizationalUnit: uoVal,
         );
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -382,6 +390,33 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                       if (v.trim().length < 5) return 'El título debe tener al menos 5 caracteres';
                       return null;
                     },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Unidad Organizativa (UO)
+                  AppTextField(
+                    controller: _uoController,
+                    label: 'Unidad Organizativa (UO)',
+                    hint: 'Ej. Laboratorio de IA, Dirección de Investigación, Presidencia...',
+                    prefixIcon: Icons.apartment_rounded,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      'Laboratorio de IA',
+                      'Dirección de Investigación',
+                      'Presidencia',
+                      'Tecnologías (OTI)',
+                      'Recursos Humanos',
+                    ].map((uo) => ActionChip(
+                      label: Text(uo, style: const TextStyle(fontSize: 11)),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      onPressed: () => setState(() => _uoController.text = uo),
+                      backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                    )).toList(),
                   ),
 
                   const SizedBox(height: 16),

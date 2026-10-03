@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -46,4 +46,24 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
+
+tasks.register("renameReleaseApk") {
+    doLast {
+        val apkDir = file("${layout.buildDirectory.get()}/outputs/flutter-apk")
+        val defaultApk = file("$apkDir/app-release.apk")
+        val namedApk = file("$apkDir/Control Asistencia.apk")
+        if (defaultApk.exists()) {
+            defaultApk.copyTo(namedApk, overwrite = true)
+            val rootApk = file("${rootDir}/../Control Asistencia.apk")
+            defaultApk.copyTo(rootApk, overwrite = true)
+            println("=== APK renombrado exitosamente como 'Control Asistencia.apk' ===")
+            println("Ubicación 1: ${namedApk.absolutePath}")
+            println("Ubicación 2: ${rootApk.absolutePath}")
+        }
+    }
+}
+
+tasks.matching { it.name == "assembleRelease" }.configureEach {
+    finalizedBy("renameReleaseApk")
 }

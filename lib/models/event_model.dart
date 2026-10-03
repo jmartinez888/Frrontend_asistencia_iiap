@@ -180,6 +180,7 @@ class EventModel {
   final int attendeesCount;
   final List<EventAttendeeModel> attendees;
   final List<String> managerIds;
+  final String? organizationalUnit;
 
   EventModel({
     required this.id,
@@ -199,6 +200,7 @@ class EventModel {
     this.attendeesCount = 0,
     this.attendees = const [],
     this.managerIds = const [],
+    this.organizationalUnit,
   });
 
   bool canUserManageEvent(String? userId, String? userRole) {
@@ -275,6 +277,7 @@ class EventModel {
           attendeesList.length,
       attendees: attendeesList,
       managerIds: parsedManagerIds,
+      organizationalUnit: json['organizational_unit']?.toString() ?? json['organizationalUnit']?.toString(),
     );
   }
 
@@ -297,6 +300,7 @@ class EventModel {
       'attendees_count': attendeesCount,
       'attendees': attendees.map((a) => a.toJson()).toList(),
       'manager_ids': managerIds,
+      'organizational_unit': organizationalUnit,
     };
   }
 
@@ -318,6 +322,7 @@ class EventModel {
     int? attendeesCount,
     List<EventAttendeeModel>? attendees,
     List<String>? managerIds,
+    String? organizationalUnit,
   }) {
     return EventModel(
       id: id ?? this.id,
@@ -337,6 +342,7 @@ class EventModel {
       attendeesCount: attendeesCount ?? this.attendeesCount,
       attendees: attendees ?? this.attendees,
       managerIds: managerIds ?? this.managerIds,
+      organizationalUnit: organizationalUnit ?? this.organizationalUnit,
     );
   }
 }

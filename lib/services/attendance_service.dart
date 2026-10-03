@@ -85,6 +85,12 @@ class AttendanceService {
     return response as Map<String, dynamic>;
   }
 
+  // 4.1 Eliminar un registro puntual de asistencia (Admin, Supervisor, Admin Evento)
+  static Future<Map<String, dynamic>> deleteAttendanceRecord(String id) async {
+    final response = await ApiClient.delete(ApiConfig.attendanceById(id));
+    return response as Map<String, dynamic>;
+  }
+
   static const String _keyCachedToday = 'cached_today_attendance_records_v1';
   static const String _keyCachedMy = 'cached_my_attendance_records_v1';
   static const String _keyCachedAll = 'cached_all_attendance_records_v1';
